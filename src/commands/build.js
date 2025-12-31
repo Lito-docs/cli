@@ -8,6 +8,7 @@ import { generateConfig } from '../core/config.js';
 import { runAstroBuild } from '../core/astro.js';
 import { syncDocsConfig } from '../core/config-sync.js';
 import { copyOutput } from '../core/output.js';
+import { getTemplatePath } from '../core/template-fetcher.js';
 
 export async function buildCommand(options) {
   try {
@@ -23,9 +24,14 @@ export async function buildCommand(options) {
 
     const s = spinner();
 
+    // Step 0: Resolve template
+    s.start('Resolving template...');
+    const templatePath = await getTemplatePath(options.template, options.refresh);
+    s.stop(templatePath ? `Using template: ${pc.cyan(templatePath)}` : 'Using bundled template');
+
     // Step 1: Scaffold temporary Astro project
     s.start('Setting up Astro project...');
-    const projectDir = await scaffoldProject();
+    const projectDir = await scaffoldProject(templatePath);
     s.stop('Astro project scaffolded');
 
     // Step 2: Install dependencies

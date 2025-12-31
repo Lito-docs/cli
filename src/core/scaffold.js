@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 // Use a consistent directory path instead of random temp directories
 const SUPERDOCS_DIR = join(tmpdir(), '.superdocs');
 
-export async function scaffoldProject() {
+export async function scaffoldProject(customTemplatePath = null) {
   // Ensure the directory exists (creates if it doesn't)
   await ensureDir(SUPERDOCS_DIR);
 
@@ -20,8 +20,8 @@ export async function scaffoldProject() {
 
   const tempDir = SUPERDOCS_DIR;
 
-  // Copy template to temp directory, excluding node_modules and lock files
-  const templatePath = join(__dirname, '../template');
+  // Use custom template path if provided, otherwise use bundled template
+  const templatePath = customTemplatePath || join(__dirname, '../template');
   await copy(templatePath, tempDir, {
     filter: (src) => {
       const name = basename(src);

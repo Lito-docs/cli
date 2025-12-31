@@ -7,7 +7,7 @@ The open-source Mintlify alternative. Beautiful documentation sites from Markdow
 ✨ **Simple Setup** - Point to your docs folder and go
 🚀 **Astro-Powered** - Leverages Astro's speed and SEO optimization
 📝 **Markdown & MDX** - Full support for both formats with frontmatter
-🎨 **Responsive Design** - Mobile-friendly, beautiful documentation
+🎨 **Customizable Templates** - Use GitHub-hosted or local templates
 🔥 **Hot Reload** - Dev server with live file watching
 ⚡ **Fast Builds** - Static site generation for optimal performance
 🎯 **SEO Optimized** - Meta tags, semantic HTML, and proper structure
@@ -44,20 +44,10 @@ superdocs build --input ./my-docs --output ./dist
 
 - `-i, --input <path>` (required) - Path to your docs folder
 - `-o, --output <path>` - Output directory (default: `./dist`)
-- `-t, --theme <name>` - Theme to use (`default`, `dark`)
+- `-t, --template <name>` - Template to use (see [Templates](#templates))
 - `-b, --base-url <url>` - Base URL for the site (default: `/`)
 - `--search` - Enable search functionality
-
-**Example:**
-
-```bash
-superdocs build \
-  --input ./docs \
-  --output ./public \
-  --theme dark \
-  --base-url /docs/ \
-  --search
-```
+- `--refresh` - Force re-download template from GitHub
 
 ### Dev Command
 
@@ -70,16 +60,11 @@ superdocs dev --input ./my-docs
 **Options:**
 
 - `-i, --input <path>` (required) - Path to your docs folder
-- `-t, --theme <name>` - Theme to use
+- `-t, --template <name>` - Template to use
 - `-b, --base-url <url>` - Base URL for the site
 - `-p, --port <number>` - Port for dev server (default: `4321`)
 - `--search` - Enable search functionality
-
-**Example:**
-
-```bash
-superdocs dev --input ./docs --port 3000
-```
+- `--refresh` - Force re-download template
 
 ### Eject Command
 
@@ -89,13 +74,56 @@ Export the full Astro project source code to customize it further:
 superdocs eject --input ./my-docs --output ./my-project
 ```
 
-**Options:**
+## Templates
 
-- `-i, --input <path>` (required) - Path to your docs folder
-- `-o, --output <path>` - Output directory for the project (default: `./astro-docs-project`)
-- `-t, --theme <name>` - Theme to use
-- `-b, --base-url <url>` - Base URL for the site
-- `--search` - Enable search functionality
+SuperDocs supports flexible template sources:
+
+### Default Template
+
+```bash
+superdocs dev -i ./docs
+```
+
+### GitHub Templates
+
+Use templates hosted on GitHub:
+
+```bash
+# From a GitHub repo
+superdocs dev -i ./docs --template github:owner/repo
+
+# Specific branch or tag
+superdocs dev -i ./docs --template github:owner/repo#v1.0.0
+
+# Template in a subdirectory
+superdocs dev -i ./docs --template github:owner/repo/templates/modern
+```
+
+### Local Templates
+
+Use a local template folder:
+
+```bash
+superdocs dev -i ./docs --template ./my-custom-template
+```
+
+### Template Management
+
+```bash
+# List available templates
+superdocs template list
+
+# Clear template cache
+superdocs template cache --clear
+```
+
+### Update Templates
+
+Templates are cached for 24 hours. Force update with:
+
+```bash
+superdocs dev -i ./docs --refresh
+```
 
 ## Documentation Structure
 
@@ -131,11 +159,12 @@ Your content here...
 
 The CLI tool:
 
-1. **Scaffolds** - Creates a temporary Astro project from an internal template
-2. **Syncs** - Copies your docs into `src/pages/` for automatic routing
-3. **Configures** - Generates dynamic `astro.config.mjs` with your options
-4. **Builds/Serves** - Spawns native Astro CLI commands (`astro build` or `astro dev`)
-5. **Watches** (dev mode) - Uses `chokidar` to monitor file changes
+1. **Resolves Template** - Fetches from GitHub or uses local template
+2. **Scaffolds** - Creates a temporary Astro project from the template
+3. **Syncs** - Copies your docs into `src/pages/` for automatic routing
+4. **Configures** - Generates dynamic `astro.config.mjs` with your options
+5. **Builds/Serves** - Spawns native Astro CLI commands
+6. **Watches** (dev mode) - Uses `chokidar` to monitor file changes
 
 ## Development
 
@@ -150,18 +179,16 @@ superdocs/
 │   ├── commands/
 │   │   ├── build.js        # Build command
 │   │   ├── dev.js          # Dev command with watcher
-│   │   └── eject.js        # Eject command
+│   │   ├── eject.js        # Eject command
+│   │   └── template.js     # Template management
 │   ├── core/
 │   │   ├── scaffold.js     # Project scaffolding
 │   │   ├── sync.js         # File syncing
 │   │   ├── config.js       # Config generation
 │   │   ├── astro.js        # Astro CLI spawning
-│   │   └── output.js       # Output copying
-│   └── template/           # Internal Astro template
-│       ├── src/
-│       │   ├── layouts/
-│       │   └── pages/
-│       └── package.json
+│   │   ├── template-fetcher.js   # GitHub template fetching
+│   │   └── template-registry.js  # Template name registry
+│   └── template/           # Bundled fallback template
 └── package.json
 ```
 

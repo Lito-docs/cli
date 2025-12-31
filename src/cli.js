@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import { buildCommand } from './commands/build.js';
 import { devCommand } from './commands/dev.js';
 import { ejectCommand } from './commands/eject.js';
+import { templateListCommand, templateCacheCommand } from './commands/template.js';
 
 export async function cli() {
   const program = new Command();
@@ -17,19 +18,21 @@ export async function cli() {
     .description('Build the documentation site')
     .requiredOption('-i, --input <path>', 'Path to the docs folder')
     .option('-o, --output <path>', 'Output directory for the built site', './dist')
-    .option('-t, --theme <name>', 'Theme to use', 'default')
+    .option('-t, --template <name>', 'Template to use (default, github:owner/repo, or local path)', 'default')
     .option('-b, --base-url <url>', 'Base URL for the site', '/')
     .option('--search', 'Enable search functionality', false)
+    .option('--refresh', 'Force re-download template (bypass cache)', false)
     .action(buildCommand);
 
   program
     .command('dev')
     .description('Start development server with watch mode')
     .requiredOption('-i, --input <path>', 'Path to the docs folder')
-    .option('-t, --theme <name>', 'Theme to use', 'default')
+    .option('-t, --template <name>', 'Template to use (default, github:owner/repo, or local path)', 'default')
     .option('-b, --base-url <url>', 'Base URL for the site', '/')
     .option('--search', 'Enable search functionality', false)
     .option('-p, --port <number>', 'Port for dev server', '4321')
+    .option('--refresh', 'Force re-download template (bypass cache)', false)
     .action(devCommand);
 
   program
@@ -37,10 +40,27 @@ export async function cli() {
     .description('Export the full Astro project source code')
     .requiredOption('-i, --input <path>', 'Path to the docs folder')
     .option('-o, --output <path>', 'Output directory for the project', './astro-docs-project')
-    .option('-t, --theme <name>', 'Theme to use', 'default')
+    .option('-t, --template <name>', 'Template to use (default, github:owner/repo, or local path)', 'default')
     .option('-b, --base-url <url>', 'Base URL for the site', '/')
     .option('--search', 'Enable search functionality', false)
+    .option('--refresh', 'Force re-download template (bypass cache)', false)
     .action(ejectCommand);
+
+  // Template management commands
+  const templateCmd = program
+    .command('template')
+    .description('Manage documentation templates');
+
+  templateCmd
+    .command('list')
+    .description('List available templates')
+    .action(templateListCommand);
+
+  templateCmd
+    .command('cache')
+    .description('Manage template cache')
+    .option('--clear', 'Clear all cached templates')
+    .action(templateCacheCommand);
 
   try {
     await program.parseAsync(process.argv);

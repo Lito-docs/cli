@@ -20,7 +20,7 @@ export async function buildCommand(options) {
     }
 
     console.clear();
-    intro(pc.inverse(pc.cyan(' SuperDocs - Build ')));
+    intro(pc.inverse(pc.cyan(' Lito - Build ')));
 
     const s = spinner();
 
@@ -34,27 +34,32 @@ export async function buildCommand(options) {
     const projectDir = await scaffoldProject(templatePath);
     s.stop('Astro project scaffolded');
 
-    // Step 2: Install dependencies
+    // Step 2: Prepare project (Install dependencies, Sync docs, Generate navigation)
     const { installDependencies, runBinary } = await import('../core/package-manager.js');
-    s.start('Installing dependencies...');
-    await installDependencies(projectDir, { silent: true });
-    s.stop('Dependencies installed');
-
-    // Step 3: Sync docs to Astro
-    s.start('Syncing documentation files...');
-    await syncDocs(inputPath, projectDir);
-    s.stop('Documentation synced');
-
-    // Step 3.5: Sync docs config (auto-generate navigation)
-    s.start('Generating navigation...');
+    s.start('Preparing project (installing dependencies, syncing files)...');
+    
     const userConfigPath = resolve(options.input, 'docs-config.json');
-    await syncDocsConfig(projectDir, inputPath, userConfigPath);
-    s.stop('Navigation generated');
+
+    await Promise.all([
+      installDependencies(projectDir, { silent: true }),
+      syncDocs(inputPath, projectDir),
+      syncDocsConfig(projectDir, inputPath, userConfigPath)
+    ]);
+
+    s.stop('Project prepared (dependencies installed, docs synced, navigation generated)');
 
     // Step 4: Generate config
     s.start('Generating Astro configuration...');
     await generateConfig(projectDir, options);
     s.stop('Configuration generated');
+
+    // Step 4.5: Configure for provider
+    if (options.provider && options.provider !== 'static') {
+      s.start(`Configuring for ${options.provider} (${options.rendering})...`);
+      const { configureProvider } = await import('../core/providers.js');
+      await configureProvider(projectDir, options.provider, options.rendering);
+      s.stop(`Configured for ${options.provider}`);
+    }
 
     // Step 5: Build with Astro
     s.start('Building site with Astro...');

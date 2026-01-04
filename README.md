@@ -1,10 +1,10 @@
-# SuperDocs
+# Lito
 
 The open-source Mintlify alternative. Beautiful documentation sites from Markdown.
 
 ## Features
 
-✨ **Simple Setup** - Point to your docs folder and go
+✨ **Simple Setup** - Point to your docs folder and go 
 🚀 **Astro-Powered** - Leverages Astro's speed and SEO optimization
 📝 **Markdown & MDX** - Full support for both formats with frontmatter
 🎨 **Customizable Templates** - Use GitHub-hosted or local templates
@@ -17,15 +17,15 @@ The open-source Mintlify alternative. Beautiful documentation sites from Markdow
 ### Global Installation
 
 ```bash
-npm install -g @devrohit06/superdocs
+npm install -g lito
 # or
-pnpm add -g @devrohit06/superdocs
+pnpm add -g lito
 ```
 
 ### Local Development
 
 ```bash
-cd superdocs
+cd lito
 pnpm install
 chmod +x bin/cli.js
 ```
@@ -37,7 +37,7 @@ chmod +x bin/cli.js
 Generate a static documentation site:
 
 ```bash
-superdocs build --input ./my-docs --output ./dist
+lito build --input ./my-docs --output ./dist
 ```
 
 **Options:**
@@ -46,6 +46,8 @@ superdocs build --input ./my-docs --output ./dist
 - `-o, --output <path>` - Output directory (default: `./dist`)
 - `-t, --template <name>` - Template to use (see [Templates](#templates))
 - `-b, --base-url <url>` - Base URL for the site (default: `/`)
+- `--provider <name>` - optimize for hosting provider (vercel, netlify, cloudflare, static)
+- `--rendering <mode>` - Rendering mode (static, server, hybrid)
 - `--search` - Enable search functionality
 - `--refresh` - Force re-download template from GitHub
 
@@ -54,7 +56,7 @@ superdocs build --input ./my-docs --output ./dist
 Start a development server with hot reload:
 
 ```bash
-superdocs dev --input ./my-docs
+lito dev --input ./my-docs
 ```
 
 **Options:**
@@ -71,17 +73,56 @@ superdocs dev --input ./my-docs
 Export the full Astro project source code to customize it further:
 
 ```bash
-superdocs eject --input ./my-docs --output ./my-project
+lito eject --input ./my-docs --output ./my-project
+```
+
+## Deployment
+
+Lito includes built-in optimizations for major hosting providers. Use the `--provider` flag during build:
+
+### Vercel
+```bash
+lito build -i ./docs --provider vercel
+```
+Generates `vercel.json` and optimizes for Vercel's edge network.
+
+### Netlify
+```bash
+lito build -i ./docs --provider netlify
+```
+Generates `netlify.toml` with security headers.
+
+### Cloudflare Pages
+```bash
+lito build -i ./docs --provider cloudflare --rendering server
+```
+Configures the project for Cloudflare's edge runtime with SSR support.
+
+## Analytics
+
+Lito supports Google Analytics 4 out of the box with zero performance penalty (powered by Partytown).
+
+Add this to your `docs-config.json`:
+
+```json
+{
+  "integrations": {
+    "analytics": {
+      "provider": "google-analytics",
+      "measurementId": "G-XXXXXXXXXX"
+    }
+  }
+}
 ```
 
 ## Templates
 
-SuperDocs supports flexible template sources:
+Lito supports flexible template sources:
 
 ### Default Template
 
 ```bash
-superdocs dev -i ./docs
+lito dev -i ./docs
 ```
 
 ### GitHub Templates
@@ -90,13 +131,13 @@ Use templates hosted on GitHub:
 
 ```bash
 # From a GitHub repo
-superdocs dev -i ./docs --template github:owner/repo
+lito dev -i ./docs --template github:owner/repo
 
 # Specific branch or tag
-superdocs dev -i ./docs --template github:owner/repo#v1.0.0
+lito dev -i ./docs --template github:owner/repo#v1.0.0
 
 # Template in a subdirectory
-superdocs dev -i ./docs --template github:owner/repo/templates/modern
+lito dev -i ./docs --template github:owner/repo/templates/modern
 ```
 
 ### Local Templates
@@ -104,17 +145,17 @@ superdocs dev -i ./docs --template github:owner/repo/templates/modern
 Use a local template folder:
 
 ```bash
-superdocs dev -i ./docs --template ./my-custom-template
+lito dev -i ./docs --template ./my-custom-template
 ```
 
 ### Template Management
 
 ```bash
 # List available templates
-superdocs template list
+lito template list
 
 # Clear template cache
-superdocs template cache --clear
+lito template cache --clear
 ```
 
 ### Update Templates
@@ -122,7 +163,7 @@ superdocs template cache --clear
 Templates are cached for 24 hours. Force update with:
 
 ```bash
-superdocs dev -i ./docs --refresh
+lito dev -i ./docs --refresh
 ```
 
 ## Documentation Structure
@@ -171,7 +212,7 @@ The CLI tool:
 ### Project Structure
 
 ```
-superdocs/
+lito/
 ├── bin/
 │   └── cli.js              # CLI entry point
 ├── src/

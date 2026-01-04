@@ -9,16 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Use a consistent directory path instead of random temp directories
-const SUPERDOCS_DIR = join(tmpdir(), '.superdocs');
+const LITO_DIR = join(tmpdir(), '.lito');
 
 export async function scaffoldProject(customTemplatePath = null) {
   // Ensure the directory exists (creates if it doesn't)
-  await ensureDir(SUPERDOCS_DIR);
+  await ensureDir(LITO_DIR);
 
   // Empty the directory to ensure a clean state
-  await emptyDir(SUPERDOCS_DIR);
+  await emptyDir(LITO_DIR);
 
-  const tempDir = SUPERDOCS_DIR;
+  const tempDir = LITO_DIR;
 
   // Use custom template path if provided, otherwise use bundled template
   const templatePath = customTemplatePath || join(__dirname, '../template');
@@ -46,7 +46,7 @@ export async function scaffoldProject(customTemplatePath = null) {
 // Cleanup function to remove the temp directory on exit
 export async function cleanupProject() {
   try {
-    await remove(SUPERDOCS_DIR);
+    await remove(LITO_DIR);
   } catch (error) {
     // Ignore errors during cleanup (directory might not exist)
   }

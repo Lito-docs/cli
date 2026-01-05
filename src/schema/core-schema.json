@@ -1,0 +1,262 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lito.dev/schemas/core-config.json",
+  "title": "Lito Core Configuration Schema",
+  "description": "This schema defines the REQUIRED configuration that ALL Lito templates must support. Users can swap templates without changing any of these options.",
+  "type": "object",
+  "required": ["metadata"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Site metadata - REQUIRED by all templates",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of your documentation site"
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of your documentation"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The production URL of your documentation site"
+        },
+        "version": {
+          "type": "string",
+          "description": "The version of your documentation"
+        }
+      },
+      "required": ["name"]
+    },
+    "branding": {
+      "type": "object",
+      "description": "Core branding options - supported by all templates",
+      "properties": {
+        "logo": {
+          "type": "object",
+          "description": "Logo configuration",
+          "properties": {
+            "light": {
+              "type": "string",
+              "description": "Path to logo for light mode"
+            },
+            "dark": {
+              "type": "string",
+              "description": "Path to logo for dark mode"
+            },
+            "href": {
+              "type": "string",
+              "description": "Link when clicking the logo"
+            }
+          }
+        },
+        "favicon": {
+          "type": "string",
+          "description": "Path to favicon"
+        },
+        "colors": {
+          "type": "object",
+          "description": "Core color configuration",
+          "properties": {
+            "primary": {
+              "type": "string",
+              "description": "Primary brand color (hex, rgb, or color name)"
+            }
+          }
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "description": "Navigation structure - REQUIRED by all templates",
+      "properties": {
+        "navbar": {
+          "type": "object",
+          "description": "Top navigation bar configuration",
+          "properties": {
+            "links": {
+              "type": "array",
+              "description": "Navigation links in the header",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string" },
+                  "href": { "type": "string" }
+                },
+                "required": ["label", "href"]
+              }
+            },
+            "cta": {
+              "type": "object",
+              "description": "Call-to-action button",
+              "properties": {
+                "label": { "type": "string" },
+                "href": { "type": "string" }
+              }
+            }
+          }
+        },
+        "sidebar": {
+          "type": "array",
+          "description": "Sidebar navigation groups",
+          "items": {
+            "$ref": "#/$defs/sidebarGroup"
+          }
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "description": "Search configuration - supported by all templates",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable search functionality"
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["local", "algolia"],
+          "default": "local",
+          "description": "Search provider"
+        },
+        "placeholder": {
+          "type": "string",
+          "default": "Search docs...",
+          "description": "Search input placeholder text"
+        }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "description": "SEO configuration - supported by all templates",
+      "properties": {
+        "ogImage": {
+          "type": "string",
+          "description": "Default Open Graph image URL"
+        },
+        "twitterHandle": {
+          "type": "string",
+          "description": "Twitter handle (e.g., @username)"
+        },
+        "defaultAuthor": {
+          "type": "string",
+          "description": "Default author name"
+        },
+        "defaultKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Default keywords for all pages"
+        }
+      }
+    },
+    "i18n": {
+      "type": "object",
+      "description": "Internationalization - supported by all templates",
+      "properties": {
+        "defaultLocale": {
+          "type": "string",
+          "default": "en",
+          "description": "Default locale"
+        },
+        "locales": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["en"],
+          "description": "Supported locales"
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "prefixDefaultLocale": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "description": "Asset folder configuration - supported by all templates",
+      "properties": {
+        "images": {
+          "type": "string",
+          "default": "_images",
+          "description": "Images folder name"
+        },
+        "css": {
+          "type": "string",
+          "default": "_css",
+          "description": "CSS folder name"
+        },
+        "static": {
+          "type": "string",
+          "default": "_assets",
+          "description": "Static assets folder name"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sidebarGroup": {
+      "type": "object",
+      "description": "A sidebar navigation group",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Group heading"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon name (Iconify format)"
+        },
+        "items": {
+          "type": "array",
+          "description": "Navigation items in this group",
+          "items": {
+            "$ref": "#/$defs/sidebarItem"
+          }
+        }
+      },
+      "required": ["label", "items"]
+    },
+    "sidebarItem": {
+      "type": "object",
+      "description": "A sidebar navigation item",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Link text"
+        },
+        "slug": {
+          "type": "string",
+          "description": "Page slug (relative path without extension)"
+        },
+        "href": {
+          "type": "string",
+          "description": "External URL (use instead of slug for external links)"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon name (Iconify format)"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+          "description": "HTTP method for API endpoints"
+        },
+        "items": {
+          "type": "array",
+          "description": "Nested items for sub-groups",
+          "items": {
+            "$ref": "#/$defs/sidebarItem"
+          }
+        }
+      },
+      "required": ["label"]
+    }
+  }
+}

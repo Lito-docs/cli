@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lito.dev/schemas/template-manifest.json",
+  "title": "Lito Template Manifest",
+  "description": "Defines a template's capabilities and supported configuration extensions",
+  "type": "object",
+  "required": ["name", "version", "coreSchemaVersion"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name"
+    },
+    "version": {
+      "type": "string",
+      "description": "Template version (semver)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the template"
+    },
+    "author": {
+      "type": "string",
+      "description": "Template author"
+    },
+    "repository": {
+      "type": "string",
+      "description": "Template repository URL"
+    },
+    "coreSchemaVersion": {
+      "type": "string",
+      "description": "The core schema version this template implements (e.g., '1.0.0')",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Theme-specific configuration extensions supported by this template",
+      "properties": {
+        "footer": {
+          "type": "object",
+          "description": "Extended footer configuration support",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "layouts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Supported footer layouts"
+            },
+            "socials": { "type": "boolean", "default": true },
+            "linkSections": { "type": "boolean", "default": true }
+          }
+        },
+        "theme": {
+          "type": "object",
+          "description": "Extended theme options",
+          "properties": {
+            "modes": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["light", "dark", "auto"] },
+              "description": "Supported theme modes"
+            },
+            "customColors": { "type": "boolean", "default": false },
+            "customFonts": { "type": "boolean", "default": false }
+          }
+        },
+        "landing": {
+          "type": "object",
+          "description": "Landing page support",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "hero": { "type": "boolean", "default": false },
+            "features": { "type": "boolean", "default": false }
+          }
+        },
+        "integrations": {
+          "type": "object",
+          "description": "Third-party integration support",
+          "properties": {
+            "analytics": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Supported analytics providers"
+            },
+            "feedback": { "type": "boolean", "default": false },
+            "copyPage": { "type": "boolean", "default": false }
+          }
+        },
+        "versioning": {
+          "type": "object",
+          "description": "Documentation versioning support",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "versionBanner": { "type": "boolean", "default": false }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom extensions defined by the template"
+      }
+    },
+    "extensionSchema": {
+      "type": "string",
+      "description": "Path to JSON schema for template-specific extensions (relative to template root)"
+    }
+  }
+}

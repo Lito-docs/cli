@@ -2,6 +2,7 @@ import pkg from 'fs-extra';
 const { readFile, writeFile, pathExists } = pkg;
 import { join } from 'path';
 import { readdir } from 'fs/promises';
+import { validateConfig } from './config-validator.js';
 
 /**
  * Auto-generates navigation structure from docs folder
@@ -70,8 +71,11 @@ export async function generateNavigationFromDocs(docsPath) {
 
 /**
  * Merges user config with auto-generated navigation
+ * @param {object} options - Sync options
+ * @param {boolean} options.validate - Whether to validate the config (default: true)
  */
-export async function syncDocsConfig(projectDir, docsPath, userConfigPath) {
+export async function syncDocsConfig(projectDir, docsPath, userConfigPath, options = {}) {
+  const { validate = true } = options;
   const configPath = join(projectDir, 'docs-config.json');
 
   // Read base config from template
@@ -80,6 +84,16 @@ export async function syncDocsConfig(projectDir, docsPath, userConfigPath) {
   // If user has a custom config, merge it
   if (userConfigPath && await pathExists(userConfigPath)) {
     const userConfig = JSON.parse(await readFile(userConfigPath, 'utf-8'));
+
+    // Validate user config before merging (only core config is validated)
+    if (validate) {
+      const validationResult = validateConfig(userConfig, projectDir);
+      if (!validationResult.valid) {
+        const errorMessages = validationResult.errors.map(e => `${e.path}: ${e.message}`).join('\n  ');
+        throw new Error(`Configuration validation failed:\n  ${errorMessages}`);
+      }
+    }
+
     config = deepMerge(config, userConfig);
   }
 
@@ -90,6 +104,8 @@ export async function syncDocsConfig(projectDir, docsPath, userConfigPath) {
 
   // Write merged config
   await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+
+  return { config };
 }
 
 function formatLabel(str) {

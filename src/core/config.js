@@ -1,9 +1,15 @@
 import pkg from "fs-extra";
-const { readFile, writeFile, ensureDir } = pkg;
+const { readFile, writeFile, ensureDir, pathExists } = pkg;
 import { join } from "path";
 import { generateThemeStyles } from "./colors.js";
 
-export async function generateConfig(projectDir, options) {
+/**
+ * Generate configuration for the project
+ * @param {string} projectDir - The scaffolded project directory
+ * @param {object} options - CLI options
+ * @param {object|null} frameworkConfig - Framework configuration (optional)
+ */
+export async function generateConfig(projectDir, options, frameworkConfig = null) {
   const {
     baseUrl,
     name,
@@ -68,27 +74,65 @@ export async function generateConfig(projectDir, options) {
     await writeFile(join(stylesDir, "generated-theme.css"), "/* No generated theme styles */", "utf-8");
   }
 
-  // Update astro.config.mjs with base URL and site URL
-  if ((baseUrl && baseUrl !== "/") || config.metadata?.url) {
+  // Update astro.config.mjs with base URL and site URL (only for Astro)
+  const frameworkName = frameworkConfig?.name || 'astro';
+
+  if (frameworkName === 'astro' && ((baseUrl && baseUrl !== "/") || config.metadata?.url)) {
     const astroConfigPath = join(projectDir, "astro.config.mjs");
-    let content = await readFile(astroConfigPath, "utf-8");
+    if (await pathExists(astroConfigPath)) {
+      let content = await readFile(astroConfigPath, "utf-8");
 
-    let injection = "export default defineConfig({\n";
-    
-    if (baseUrl && baseUrl !== "/") {
-      injection += `  base: '${baseUrl}',\n`;
+      let injection = "export default defineConfig({\n";
+
+      if (baseUrl && baseUrl !== "/") {
+        injection += `  base: '${baseUrl}',\n`;
+      }
+
+      if (config.metadata?.url) {
+        injection += `  site: '${config.metadata.url}',\n`;
+      }
+
+      // Add base/site option to defineConfig
+      content = content.replace(
+        "export default defineConfig({",
+        injection
+      );
+
+      await writeFile(astroConfigPath, content, "utf-8");
     }
-    
-    if (config.metadata?.url) {
-      injection += `  site: '${config.metadata.url}',\n`;
+  }
+
+  // Update vite.config.js for React/Vue frameworks
+  if (['react', 'vue'].includes(frameworkName) && baseUrl && baseUrl !== "/") {
+    const viteConfigPath = join(projectDir, "vite.config.js");
+    if (await pathExists(viteConfigPath)) {
+      let content = await readFile(viteConfigPath, "utf-8");
+
+      // Add base option to defineConfig
+      if (content.includes("defineConfig({")) {
+        content = content.replace(
+          "defineConfig({",
+          `defineConfig({\n  base: '${baseUrl}',`
+        );
+        await writeFile(viteConfigPath, content, "utf-8");
+      }
     }
+  }
 
-    // Add base/site option to defineConfig
-    content = content.replace(
-      "export default defineConfig({",
-      injection
-    );
+  // Update next.config.js for Next.js
+  if (frameworkName === 'next' && baseUrl && baseUrl !== "/") {
+    const nextConfigPath = join(projectDir, "next.config.js");
+    if (await pathExists(nextConfigPath)) {
+      let content = await readFile(nextConfigPath, "utf-8");
 
-    await writeFile(astroConfigPath, content, "utf-8");
+      // Add basePath to Next.js config
+      if (!content.includes("basePath")) {
+        content = content.replace(
+          "module.exports = {",
+          `module.exports = {\n  basePath: '${baseUrl}',`
+        );
+        await writeFile(nextConfigPath, content, "utf-8");
+      }
+    }
   }
 }

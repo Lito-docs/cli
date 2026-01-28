@@ -9,12 +9,15 @@
  */
 
 export const TEMPLATE_REGISTRY = {
-    // Default template (fetched from GitHub)
-    'default': 'github:Lito-docs/template',
+    // Default template - Astro-based
+    'default': 'github:Lito-docs/lito-astro-template',
 
-    // Official templates
-    // 'modern': 'github:devrohit06/lito-theme-modern',
-    // 'minimal': 'github:devrohit06/lito-theme-minimal',
+    // Framework-specific templates
+    'astro': 'github:Lito-docs/lito-astro-template',
+    'react': 'github:Lito-docs/lito-react-template',
+    'next': 'github:Lito-docs/lito-next-template',
+    'vue': 'github:Lito-docs/lito-vue-template',
+    'nuxt': 'github:Lito-docs/lito-nuxt-template',
 };
 
 /**

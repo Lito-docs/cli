@@ -1,7 +1,8 @@
 import pkg from 'fs-extra';
 const { copy, ensureDir, remove, readFile, writeFile, pathExists } = pkg;
 import { join, relative, sep } from 'path';
-import { readdir, stat } from 'fs/promises';
+import { readdir, stat, utimes } from 'fs/promises';
+import { syncLanding } from './landing-sync.js';
 
 // Known locale codes (ISO 639-1)
 const KNOWN_LOCALES = [
@@ -12,7 +13,7 @@ const KNOWN_LOCALES = [
 ];
 
 // Special folders that are not content
-const SPECIAL_FOLDERS = ['_assets', '_css', '_images', '_static', 'public'];
+const SPECIAL_FOLDERS = ['_assets', '_css', '_images', '_static', '_landing', 'public'];
 
 /**
  * Get i18n configuration from docs-config.json
@@ -28,6 +29,21 @@ async function getI18nConfig(sourcePath) {
     }
   }
   return { defaultLocale: 'en', locales: ['en'] };
+}
+
+/**
+ * Get full docs-config.json
+ */
+async function getDocsConfig(sourcePath) {
+  const configPath = join(sourcePath, 'docs-config.json');
+  if (await pathExists(configPath)) {
+    try {
+      return JSON.parse(await readFile(configPath, 'utf-8'));
+    } catch {
+      return {};
+    }
+  }
+  return {};
 }
 
 /**
@@ -97,8 +113,17 @@ async function detectVersionFolders(sourcePath, versioningConfig) {
   return versionFolders;
 }
 
-export async function syncDocs(sourcePath, projectDir) {
-  const targetPath = join(projectDir, 'src', 'pages');
+/**
+ * Sync documentation files to the project
+ * @param {string} sourcePath - User's docs directory
+ * @param {string} projectDir - Scaffolded project directory
+ * @param {object} frameworkConfig - Framework configuration (optional, defaults to Astro)
+ */
+export async function syncDocs(sourcePath, projectDir, frameworkConfig = null) {
+  // Default to Astro's src/pages for backward compatibility
+  const contentDir = frameworkConfig?.contentDir || 'src/pages';
+  const targetPath = join(projectDir, contentDir);
+  const shouldInjectLayout = frameworkConfig?.layoutInjection !== false;
 
   // Clear existing pages (except index if it exists in template)
   await ensureDir(targetPath);
@@ -159,8 +184,10 @@ export async function syncDocs(sourcePath, projectDir) {
       },
     });
 
-    // Inject layout into version markdown files
-    await injectLayoutIntoMarkdown(versionTargetPath, targetPath, null, [], version);
+    // Inject layout into version markdown files (only for frameworks that need it)
+    if (shouldInjectLayout) {
+      await injectLayoutIntoMarkdown(versionTargetPath, targetPath, null, [], version, frameworkConfig);
+    }
   }));
 
   // Sync locale folders
@@ -177,12 +204,16 @@ export async function syncDocs(sourcePath, projectDir) {
       },
     });
 
-    // Inject layout into locale markdown files
-    await injectLayoutIntoMarkdown(localeTargetPath, targetPath, locale);
+    // Inject layout into locale markdown files (only for frameworks that need it)
+    if (shouldInjectLayout) {
+      await injectLayoutIntoMarkdown(localeTargetPath, targetPath, locale, [], null, frameworkConfig);
+    }
   }));
 
-  // Inject layout into default locale markdown files
-  await injectLayoutIntoMarkdown(targetPath, targetPath, null, excludeFolders);
+  // Inject layout into default locale markdown files (only for frameworks that need it)
+  if (shouldInjectLayout) {
+    await injectLayoutIntoMarkdown(targetPath, targetPath, null, excludeFolders, null, frameworkConfig);
+  }
 
   // Check for custom landing page conflict
   const hasUserIndex = ['index.md', 'index.mdx'].some(file =>
@@ -198,6 +229,18 @@ export async function syncDocs(sourcePath, projectDir) {
 
   // Sync user assets (images, css, static files)
   await syncUserAssets(sourcePath, projectDir);
+
+  // Sync landing page (custom HTML/CSS/JS or sections)
+  const docsConfig = await getDocsConfig(sourcePath);
+  if (docsConfig.landing) {
+    await syncLanding(sourcePath, projectDir, frameworkConfig, docsConfig);
+  }
+
+  // Trigger HMR for non-Astro frameworks (Vite-based)
+  // Vite doesn't automatically watch content directories, so we need to trigger a reload
+  if (frameworkConfig && frameworkConfig.name !== 'astro') {
+    await triggerHMR(projectDir, frameworkConfig);
+  }
 }
 
 /**
@@ -283,7 +326,27 @@ async function syncUserAssets(sourcePath, projectDir) {
       const customImport = '@import "./custom.css";';
 
       if (!globalCss.includes(customImport)) {
-        globalCss = globalCss.trimEnd() + '\n\n/* User custom styles */\n' + customImport + '\n';
+        // @import must come at the very top of the file (before @tailwind directives)
+        // Only @charset can precede @import
+        const lines = globalCss.split('\n');
+        let insertIndex = 0;
+
+        // Find position after @charset if it exists (only thing allowed before @import)
+        for (let i = 0; i < lines.length; i++) {
+          const trimmed = lines[i].trim();
+          if (trimmed.startsWith('@charset')) {
+            insertIndex = i + 1;
+            break;
+          }
+          // Stop at first non-empty, non-comment line
+          if (trimmed && !trimmed.startsWith('/*') && !trimmed.startsWith('*') && !trimmed.startsWith('//')) {
+            break;
+          }
+        }
+
+        // Insert the import at the top (after @charset if present)
+        lines.splice(insertIndex, 0, '/* User custom styles */', customImport, '');
+        globalCss = lines.join('\n');
         await writeFile(globalCssPath, globalCss, 'utf-8');
       }
     }
@@ -299,9 +362,14 @@ async function syncUserAssets(sourcePath, projectDir) {
  * @param {string|null} locale - Current locale (null for default)
  * @param {string[]} skipFolders - Folders to skip (locale folders when processing root)
  * @param {string|null} version - Current version (null for non-versioned)
+ * @param {object|null} frameworkConfig - Framework configuration for layout paths
  */
-async function injectLayoutIntoMarkdown(dir, rootDir, locale = null, skipFolders = [], version = null) {
+async function injectLayoutIntoMarkdown(dir, rootDir, locale = null, skipFolders = [], version = null, frameworkConfig = null) {
   const entries = await readdir(dir, { withFileTypes: true });
+
+  // Get layout paths from framework config or use defaults
+  const baseLayoutPath = frameworkConfig?.layoutPath || 'layouts/MarkdownLayout.astro';
+  const apiLayoutPath = frameworkConfig?.apiLayoutPath || 'layouts/APILayout.astro';
 
   await Promise.all(entries.map(async (entry) => {
     const fullPath = join(dir, entry.name);
@@ -311,14 +379,14 @@ async function injectLayoutIntoMarkdown(dir, rootDir, locale = null, skipFolders
       if (skipFolders.includes(entry.name)) {
         return;
       }
-      await injectLayoutIntoMarkdown(fullPath, rootDir, locale, [], version);
+      await injectLayoutIntoMarkdown(fullPath, rootDir, locale, [], version, frameworkConfig);
     } else if (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')) {
       let content = await readFile(fullPath, 'utf-8');
 
       // Calculate relative path to layout
       const relPath = relative(rootDir, fullPath);
       const depth = relPath.split(sep).length - 1;
-      const layoutPath = '../'.repeat(depth + 1) + 'layouts/MarkdownLayout.astro';
+      const layoutPath = '../'.repeat(depth + 1) + baseLayoutPath;
 
       // Check if file already has frontmatter
       if (content.startsWith('---')) {
@@ -330,7 +398,7 @@ async function injectLayoutIntoMarkdown(dir, rootDir, locale = null, skipFolders
           // Determine which layout to use
           let targetLayout = layoutPath;
           if (frontmatterBlock.includes('api:')) {
-            targetLayout = '../'.repeat(depth + 1) + 'layouts/APILayout.astro';
+            targetLayout = '../'.repeat(depth + 1) + apiLayoutPath;
           }
 
           // Add locale to frontmatter if present
@@ -361,4 +429,62 @@ async function injectLayoutIntoMarkdown(dir, rootDir, locale = null, skipFolders
       await writeFile(fullPath, content, 'utf-8');
     }
   }));
+}
+
+/**
+ * Trigger HMR for Vite-based frameworks
+ * Vite watches certain files for changes - we touch a trigger file to force a reload
+ * @param {string} projectDir - Project directory
+ * @param {object} frameworkConfig - Framework configuration
+ */
+async function triggerHMR(projectDir, frameworkConfig) {
+  // Use framework-specific HMR trigger file if defined
+  const triggerFilePath = frameworkConfig.hmrTriggerFile
+    ? join(projectDir, frameworkConfig.hmrTriggerFile)
+    : join(projectDir, 'src', '.lito-hmr-trigger.js');
+
+  try {
+    // Ensure parent directory exists
+    await ensureDir(join(projectDir, 'src'));
+
+    // Write a timestamp to the trigger file
+    // This file should be imported in the app's entry point
+    const timestamp = Date.now();
+    const content = `// Auto-generated by Lito CLI for HMR triggering
+// This file is updated when docs content changes
+// Import this file in your app's entry point to enable content hot reload
+export const LITO_CONTENT_VERSION = ${timestamp};
+export const LITO_LAST_UPDATE = "${new Date().toISOString()}";
+
+// Force Vite to treat this as a module that triggers HMR
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
+`;
+
+    await writeFile(triggerFilePath, content, 'utf-8');
+  } catch {
+    // Fallback: Touch the main entry file or vite config
+    const fallbackFiles = [
+      join(projectDir, 'src', 'main.jsx'),
+      join(projectDir, 'src', 'main.tsx'),
+      join(projectDir, 'src', 'App.jsx'),
+      join(projectDir, 'src', 'App.tsx'),
+      join(projectDir, 'src', 'index.jsx'),
+      join(projectDir, 'src', 'index.tsx'),
+    ];
+
+    for (const file of fallbackFiles) {
+      if (await pathExists(file)) {
+        try {
+          // Touch the file by updating its mtime
+          const now = new Date();
+          await utimes(file, now, now);
+          break;
+        } catch {
+          // Continue to next file
+        }
+      }
+    }
+  }
 }

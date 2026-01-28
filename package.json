@@ -1,6 +1,6 @@
 {
   "name": "@litodocs/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Beautiful documentation sites from Markdown. Fast, simple, and open-source.",
   "main": "src/index.js",
   "type": "module",

@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-28
+
+### Added
+
+- **Multi-Framework Support**: Generate documentation sites with your preferred framework
+  - Astro (default), React, Next.js, Vue, and Nuxt templates
+  - Framework auto-detection from manifest or config files
+  - Framework-specific dev and build commands
+  - Use `--template react`, `--template next`, `--template vue`, or `--template nuxt`
+
+- **Custom Landing Pages**: Full control over your documentation landing page
+  - **Full Custom**: Create `_landing/` folder with HTML/CSS/JS files
+  - **Section-Based**: Mix custom HTML sections with default components
+  - Landing types: `none`, `default`, `config`, `custom`, `sections`
+  - 10 section types: hero, features, cta, testimonials, pricing, faq, stats, logos, comparison, footer
+  - Multi-framework landing generation (generates `.astro`, `.jsx`, `.vue` based on template)
+
+- **`lito init` Command**: Interactive project initialization
+  - Beautiful CLI prompts with @clack/prompts
+  - Template selection with framework support
+  - Creates `docs-config.json` with sensible defaults
+  - Optional sample documentation pages (introduction.mdx, quickstart.mdx)
+  - Auto-creates folder structure (`_assets`, `_images`)
+
+- **`lito validate` Command**: Configuration validation
+  - Validates `docs-config.json` against core schema
+  - `--quiet` flag for CI pipelines (exit code only)
+  - Shows configuration summary (metadata, navigation counts, features)
+  - Portability check for cross-template compatibility
+
+- **`lito doctor` Command**: Diagnose common issues
+  - Checks directory and config file existence
+  - Validates JSON syntax and schema compliance
+  - Verifies content files exist (.md/.mdx)
+  - Detects common mistakes (node_modules, package.json in docs folder)
+  - Template cache status
+  - Node.js version check (18+ required, 20+ recommended)
+
+- **`lito info` Command**: Project information and statistics
+  - Content stats: MD/MDX file counts, subdirectories
+  - Navigation structure: sidebar groups/items, navbar links
+  - Feature status: search, i18n, versioning, dark mode
+  - Branding configuration overview
+  - Config compatibility analysis
+  - Environment info: Node.js version, platform, cached templates
+
+- **`lito preview` Command**: Preview production builds locally
+  - Auto-builds if output directory doesn't exist
+  - Uses `serve` package or Python's http.server as fallback
+  - Custom port support with `--port` flag
+
+- **Configuration Validation System**: Portable config support
+  - Core schema validation for cross-template compatibility
+  - Core keys (portable): `metadata`, `branding`, `navigation`, `search`, `seo`, `i18n`, `assets`
+  - Extension keys (template-specific): `footer`, `theme`, `landing`, `integrations`, `versioning`
+  - Forward-compatible extension handling
+
+- **Template Registry**: Shorthand names for official templates
+  - `astro` → `github:Lito-docs/lito-astro-template`
+  - `react` → `github:Lito-docs/lito-react-template`
+  - `next` → `github:Lito-docs/lito-next-template`
+  - `vue` → `github:Lito-docs/lito-vue-template`
+  - `nuxt` → `github:Lito-docs/lito-nuxt-template`
+
+### Changed
+
+- **Framework-Aware Build Pipeline**: Build and dev commands now detect and use framework-specific tooling
+- **Enhanced Sync System**: Content syncing respects framework-specific directory structures
+- **HMR Support**: Hot module replacement trigger for Vite-based frameworks (React, Vue)
+- **Conditional Search Indexing**: Pagefind indexing only for static-output frameworks
+
+### Improved
+
+- **CLI UX**: Beautiful interactive prompts, spinners, and color-coded output
+- **Build Performance**: Parallel operations for faster builds (dependency install, docs sync, config sync)
+- **Error Messages**: More helpful error messages with actionable guidance
+
+## [0.6.0] - 2026-01-15
+
+### Added
+
+- **Framework Runner**: Core abstraction for multi-framework support
+- **Landing Sync Module**: Foundation for custom landing page system
+
+### Changed
+
+- **Template Structure**: Updated default template paths for new framework templates
+
 ## [0.5.2] - 2026-01-04
 
 ### Added
@@ -32,146 +120,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation Versioning**: Support for versioned documentation
 - **Hosting Provider Support**: New `--provider` option for optimized builds (Vercel, Netlify, Cloudflare, static)
 - **Rendering Modes**: New `--rendering` option supporting static, server, and hybrid modes
-- **Dynamic Theme Generation**: Generate OKLCH color palettes from primary color with automatic light/dark mode support
+- **Dynamic Theme Generation**: Generate OKLCH color palettes from primary color
 - **i18n Support**: Automatic detection and syncing of locale folders with 40+ language codes
 - **Asset Syncing**: Automatic syncing of `_assets`, `_images`, `_css`, and `public` folders
 
 ### Changed
 
 - **Organization Migration**: Moved to official Lito-docs organization on GitHub
-  - CLI repository: `Lito-docs/cli`
-  - Template repository: `Lito-docs/template`
-  - Documentation repository: `Lito-docs/docs`
 - **Default Template**: Updated default template source to `github:Lito-docs/template`
-- **Branding**: Updated project description to "Beautiful documentation sites from Markdown. Fast, simple, and open-source."
-- **Optimized Sync**: Improved sync pipeline with parallel processing for faster builds
-- **CLI Sync**: Improved sync to handle versioned documentation folders
-- **Smart Layout Injection**: Automatic layout detection (MarkdownLayout vs APILayout) based on frontmatter
-
-### Improved
-
-- **Code Quality**: Optimized async operations with Promise.all for parallel execution
-- **Error Handling**: Better error handling throughout the CLI pipeline
+- **Branding**: Updated project description
+- **Smart Layout Injection**: Automatic layout detection based on frontmatter
 
 ## [0.3.5] - 2026-01-02
 
 ### Added
 
-- **CLI Config Options**: New command-line options for configuring documentation metadata and branding
-  - `--name <name>` - Set project name directly from CLI
-  - `--description <description>` - Set project description
-  - `--primary-color <color>` - Set primary theme color (hex format)
-  - `--accent-color <color>` - Set accent theme color (hex format)
-  - `--favicon <path>` - Set favicon path
-  - `--logo <path>` - Set logo path
-- **Enhanced Config Management**: CLI options now automatically update `docs-config.json` during build/dev/eject operations
+- **CLI Config Options**: `--name`, `--description`, `--primary-color`, `--accent-color`, `--favicon`, `--logo`
+- **Enhanced Config Management**: CLI options automatically update `docs-config.json`
 
 ### Removed
 
-- **Unused Dependency**: Removed `zod` package (was not being used, reduces bundle size)
-
-### Improved
-
-- **Cleaner Dependencies**: Only 8 essential packages now (from 9)
-- **CLI Usability**: No need to manually edit `docs-config.json` for basic configuration
+- **Unused Dependency**: Removed `zod` package
 
 ## [0.3.0] - 2026-01-01
 
 ### Added
 
-- **GitHub-Hosted Templates**: Fetch templates directly from GitHub repositories
-  - Use `--template github:owner/repo` to specify a GitHub template
-  - Support for specific branches/tags: `github:owner/repo#v1.0.0`
-  - Support for subdirectories: `github:owner/repo/path/to/template`
-- **Template Caching**: Templates are cached locally for 24 hours in `~/.lito/templates/`
-- **Template Management Commands**:
-  - `lito template list` - List available templates
-  - `lito template cache --clear` - Clear template cache
-- **Force Refresh**: Use `--refresh` flag to bypass cache and re-download templates
-- **Local Templates**: Use local template folders with `--template ./path/to/template`
-- **Template Registry**: Shorthand names for official templates
+- **GitHub-Hosted Templates**: Fetch templates from `github:owner/repo`
+- **Template Caching**: 24-hour cache in `~/.lito/templates/`
+- **Template Management**: `lito template list` and `lito template cache --clear`
+- **Force Refresh**: `--refresh` flag to bypass cache
 
 ### Changed
 
-- Renamed `--theme` option to `--template` for clarity
-- Default template now fetched from GitHub instead of bundled
-
-### Removed
-
-- Bundled template (now fetched from `github:Lito-docs/template`)
+- Renamed `--theme` to `--template`
+- Default template now fetched from GitHub
 
 ## [0.2.2] - 2025-12-29
 
 ### Fixed
 
-- **Template**: Fixed all internal links (Sidebar, Header, Footer, Search, etc.) to correctly respect the `baseUrl` configuration.
-- **Navigation**: Updated Breadcrumbs, MobileNav, and PrevNextNav to support custom base URLs.
+- **Template**: Fixed internal links to respect `baseUrl` configuration
 
 ## [0.2.1] - 2025-12-29
 
 ### Fixed
 
-- **Config**: Fixed `baseUrl` option not being applied to the Astro configuration. It now correctly patches `astro.config.mjs` when a custom base URL is provided.
+- **Config**: Fixed `baseUrl` not being applied to Astro configuration
 
 ## [0.2.0] - 2025-12-29
 
 ### Fixed
 
-- **Eject**: Resolved build errors in ejected projects by properly handling dependencies and configuration.
+- **Eject**: Resolved build errors in ejected projects
 
 ### Improved
 
-- **MDX Components**: Refined `Tabs` and `CodeGroup` components for better stability and rendering.
-- **Template**: Modernized documentation template with Astro 5 and Tailwind CSS v4 support.
+- **MDX Components**: Refined `Tabs` and `CodeGroup` components
+- **Template**: Modernized with Astro 5 and Tailwind CSS v4
 
-## [0.1.0] - 2025-12-28 (Pre-Release)
+## [0.1.0] - 2025-12-28
 
 ### Added
 
 - **CLI Tool**: Complete command-line interface for documentation generation
 - **Build Command**: Generate static documentation sites with `lito build`
-- **Dev Command**: Start a development server with hot reload using `lito dev`
-- **Eject Command**: Export full Astro project source code for customization with `lito eject`
-- **Astro Integration**: Built on Astro for lightning-fast static site generation
-- **Markdown & MDX Support**: Full support for both formats with frontmatter
-- **SEO Optimization**: Meta tags, semantic HTML, and proper structure
+- **Dev Command**: Development server with hot reload using `lito dev`
+- **Eject Command**: Export full Astro project with `lito eject`
+- **Astro Integration**: Lightning-fast static site generation
+- **Markdown & MDX Support**: Full support with frontmatter
+- **SEO Optimization**: Meta tags, semantic HTML
 - **Responsive Design**: Mobile-friendly documentation interface
-- **Rich Component Library**:
-  - API Playground component
-  - Breadcrumbs navigation
-  - Search modal
-  - Sidebar with grouping
-  - Table of contents
-  - Theme toggle
-  - Tooltip component
-  - Accordion, Alert, Badge, Cards, Code groups, and more
-- **Hot Reload**: Development server with file watching
-- **Fast Builds**: Optimized static site generation
+- **Rich Component Library**: API Playground, Breadcrumbs, Search, Sidebar, TOC, Theme Toggle, Accordion, Alert, Badge, Cards, Code groups, and more
+- **Hot Reload**: File watching in development
 - **Theme Support**: Custom themes and base URLs
-- **Project Scaffolding**: Automatic Astro project creation from templates
-- **Configuration Sync**: Dynamic config generation based on user options
-
-### Dependencies
-
-- `@astrojs/mdx`: ^3.1.0
-- `@clack/prompts`: ^0.11.0
-- `astro`: ^4.16.0
-- `chokidar`: ^4.0.0
-- `commander`: ^12.1.0
-- `execa`: ^9.0.0
-- `fs-extra`: ^11.2.0
-- `picocolors`: ^1.1.1
-
-### Known Issues
-
-- Search functionality implemented but may need further testing
-- Some advanced MDX features still being refined
-- Windows compatibility testing ongoing
-
-### What's Next
-
-- Enhanced search capabilities
-- Additional themes and customization options
-- Plugin system for extensions
-- Improved Windows support
-- More component integrations

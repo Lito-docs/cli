@@ -3,6 +3,11 @@ import pc from "picocolors";
 import { buildCommand } from "./commands/build.js";
 import { devCommand } from "./commands/dev.js";
 import { ejectCommand } from "./commands/eject.js";
+import { initCommand } from "./commands/init.js";
+import { validateCommand } from "./commands/validate.js";
+import { previewCommand } from "./commands/preview.js";
+import { doctorCommand } from "./commands/doctor.js";
+import { infoCommand } from "./commands/info.js";
 import {
   templateListCommand,
   templateCacheCommand,
@@ -94,6 +99,49 @@ export async function cli() {
     .option("--search", "Enable search functionality", false)
     .option("--refresh", "Force re-download template (bypass cache)", false)
     .action(ejectCommand);
+
+  // Initialize a new project
+  program
+    .command("init")
+    .description("Initialize a new documentation project")
+    .option("-o, --output <path>", "Output directory for the project")
+    .option("-n, --name <name>", "Project name")
+    .option("-t, --template <name>", "Template to use", "default")
+    .option("--sample", "Create sample documentation pages", true)
+    .action(initCommand);
+
+  // Validate configuration
+  program
+    .command("validate")
+    .description("Validate docs-config.json configuration")
+    .option("-i, --input <path>", "Path to the docs folder")
+    .option("-q, --quiet", "Quiet mode for CI (exit code only)")
+    .action(validateCommand);
+
+  // Preview production build
+  program
+    .command("preview")
+    .description("Preview production build locally")
+    .option("-i, --input <path>", "Path to docs folder (will build if no dist exists)")
+    .option("-o, --output <path>", "Path to built site", "./dist")
+    .option("-t, --template <name>", "Template to use if building", "default")
+    .option("-b, --base-url <url>", "Base URL for the site", "/")
+    .option("-p, --port <number>", "Port for preview server", "4321")
+    .action(previewCommand);
+
+  // Doctor - diagnose issues
+  program
+    .command("doctor")
+    .description("Diagnose common issues with your docs project")
+    .option("-i, --input <path>", "Path to the docs folder")
+    .action(doctorCommand);
+
+  // Info - show project information
+  program
+    .command("info")
+    .description("Show project information and statistics")
+    .option("-i, --input <path>", "Path to the docs folder")
+    .action(infoCommand);
 
   // Template management commands
   const templateCmd = program

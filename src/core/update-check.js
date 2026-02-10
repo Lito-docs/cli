@@ -1,5 +1,8 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import pc from 'picocolors';
 import { confirm } from '@clack/prompts';
 
@@ -11,7 +14,14 @@ const PACKAGE_NAME = '@litodocs/cli';
  * Get the current installed version from package.json
  */
 export function getCurrentVersion() {
-  return '0.5.2';
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const pkgPath = join(__dirname, '..', '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    return pkg.version;
+  } catch {
+    return '1.0.0';
+  }
 }
 
 /**

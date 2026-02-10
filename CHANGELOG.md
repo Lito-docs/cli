@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-10
+
+First stable release. Lito is production-ready for generating documentation sites from Markdown.
+
+### Added
+
+- **GitHub Packages Publishing**: Dual publishing to npm (`@litodocs/cli`) and GitHub Packages (`@lito-docs/cli`)
+- **Privacy & Terms Pages**: Added default privacy policy and terms of service pages to sample docs
+- **MIT License for Template**: Added LICENSE file to the Astro template
+
+### Changed
+
+- **Stable Release**: Promoted from beta (v0.x) to v1.0.0
+- **Decluttered Navbar**: Moved version switcher and language switcher from the header to the sidebar top; moved Twitter/Discord social links to the sidebar bottom. Header now contains only: search, GitHub, theme toggle, and CTA
+- **Mobile Navigation**: Version and language switchers accessible in mobile drawer
+- **Dynamic Version Reading**: CLI version and update checker now read from `package.json` at runtime — no more hardcoded version strings getting out of sync
+- **Multi-Instance Components**: Version switcher and language switcher refactored to support multiple instances (sidebar + mobile nav) using data attributes instead of IDs
+
+### Fixed
+
+- **Version Mismatch**: CLI reported `0.5.2` in update checker and `0.6.0` in commander while `package.json` was at `0.7.0` — all now read from single source of truth
+- **Package Size**: Added `files` field to `package.json` — npm package reduced from 31 MB (743 files) to 39 KB (31 files)
+- **Dead Entry Point**: Removed invalid `main` field pointing to non-existent `src/index.js`
+- **Sidebar Scroll**: Fixed scroll position save/restore after sidebar layout changed to flex column
+
 ## [0.7.0] - 2026-01-28
 
 ### Added

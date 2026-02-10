@@ -12,7 +12,7 @@ import {
   templateListCommand,
   templateCacheCommand,
 } from "./commands/template.js";
-import { checkForUpdates, upgradeCommand } from "./core/update-check.js";
+import { checkForUpdates, upgradeCommand, getCurrentVersion } from "./core/update-check.js";
 
 export async function cli() {
   const program = new Command();
@@ -25,7 +25,7 @@ export async function cli() {
     .description(
       "Beautiful documentation sites from Markdown. Fast, simple, and open-source."
     )
-    .version("0.6.0");
+    .version(getCurrentVersion());
 
   program
     .command("build")

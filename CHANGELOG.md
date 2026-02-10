@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-11
+
+### Added
+
+- **Nuxt Framework Support**: Full Nuxt template support in the CLI
+  - Framework detection via `nuxt.config.ts`/`nuxt.config.js` or `nuxt` dependency
+  - Dev server with `--port` flag, build with `.output/public` output directory
+  - Pagefind search indexing for Nuxt static builds
+
+### Fixed
+
+- **Scaffold Directory**: Moved dev-project directory from `/tmp/.lito` to `~/.lito/dev-project` to fix bundler resolution issues (e.g. Turbopack failing to resolve `node_modules` from `/tmp`)
+
 ## [1.0.0] - 2026-02-10
 
 First stable release. Lito is production-ready for generating documentation sites from Markdown.

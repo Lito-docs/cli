@@ -1,6 +1,6 @@
 import pkg from 'fs-extra';
 const { ensureDir, emptyDir, copy, remove } = pkg;
-import { tmpdir } from 'os';
+import { homedir } from 'os';
 import { join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -8,8 +8,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Use a consistent directory path instead of random temp directories
-const LITO_DIR = join(tmpdir(), '.lito');
+// Use a directory under the user's home to avoid resolution issues
+// with bundlers (e.g. Turbopack) that fail to resolve node_modules from /tmp
+const LITO_DIR = join(homedir(), '.lito', 'dev-project');
 
 export async function scaffoldProject(customTemplatePath = null) {
   // Ensure the directory exists (creates if it doesn't)

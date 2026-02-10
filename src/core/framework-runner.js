@@ -60,6 +60,18 @@ const DEFAULT_FRAMEWORK_CONFIGS = {
     // HMR trigger file that will be updated when content changes
     hmrTriggerFile: 'src/.lito-hmr-trigger.js',
   },
+  nuxt: {
+    name: 'nuxt',
+    commands: {
+      dev: ['nuxt', ['dev']],
+      build: ['nuxt', ['build']],
+    },
+    contentDir: 'content',
+    publicDir: 'public',
+    configFile: 'nuxt.config.ts',
+    layoutInjection: false,
+    useMDX: true,
+  },
 };
 
 /**
@@ -99,6 +111,11 @@ export async function detectFramework(projectDir) {
     return DEFAULT_FRAMEWORK_CONFIGS.astro;
   }
 
+  if (await pathExists(join(projectDir, 'nuxt.config.ts')) ||
+      await pathExists(join(projectDir, 'nuxt.config.js'))) {
+    return DEFAULT_FRAMEWORK_CONFIGS.nuxt;
+  }
+
   if (await pathExists(join(projectDir, 'next.config.js')) ||
       await pathExists(join(projectDir, 'next.config.mjs')) ||
       await pathExists(join(projectDir, 'next.config.ts'))) {
@@ -113,6 +130,7 @@ export async function detectFramework(projectDir) {
       const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
       if (deps['next']) return DEFAULT_FRAMEWORK_CONFIGS.next;
+      if (deps['nuxt']) return DEFAULT_FRAMEWORK_CONFIGS.nuxt;
       if (deps['astro']) return DEFAULT_FRAMEWORK_CONFIGS.astro;
       if (deps['vue'] && deps['vite']) return DEFAULT_FRAMEWORK_CONFIGS.vue;
       if (deps['react'] && deps['vite']) return DEFAULT_FRAMEWORK_CONFIGS.react;
@@ -162,6 +180,8 @@ export async function runFrameworkDev(projectDir, frameworkConfig, port = '4321'
     devArgs.push('--port', port);
   } else if (frameworkConfig.name === 'next') {
     devArgs.push('-p', port);
+  } else if (frameworkConfig.name === 'nuxt') {
+    devArgs.push('--port', port);
   } else {
     // Vite-based frameworks
     devArgs.push('--port', port);
@@ -189,6 +209,8 @@ export function getOutputDir(frameworkConfig) {
       return 'dist';
     case 'next':
       return '.next';
+    case 'nuxt':
+      return '.output/public';
     case 'react':
     case 'vue':
       return 'dist';
@@ -202,7 +224,7 @@ export function getOutputDir(frameworkConfig) {
  */
 export function needsSearchIndex(frameworkConfig) {
   // Only static-output frameworks need pagefind
-  return ['astro', 'react', 'vue'].includes(frameworkConfig.name);
+  return ['astro', 'react', 'vue', 'nuxt'].includes(frameworkConfig.name);
 }
 
 export { DEFAULT_FRAMEWORK_CONFIGS };

@@ -43,12 +43,13 @@ jobs:
           registry-url: https://npm.pkg.github.com/
       - run: npm ci
       - name: Patch scope for GitHub Packages
-        run: node -e "
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          pkg.name = '@lito-docs/cli';
-          pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.name = '@lito-docs/cli';
+            pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
       - run: npm publish
         env:

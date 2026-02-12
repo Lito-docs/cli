@@ -98,11 +98,17 @@ export async function syncCustomLanding(sourcePath, projectDir, frameworkConfig,
   // Read all files from _landing/
   const files = await readdir(landingSource, { withFileTypes: true });
 
+  // Check if navbar/footer are explicitly hidden
+  const navbarHidden = landingConfig.navbar === false;
+  const footerHidden = landingConfig.footer === false;
+
   // Separate files by type
   const htmlFiles = [];
   const cssFiles = [];
   const jsFiles = [];
   const assetFiles = [];
+  let navbarHtml = null;
+  let footerHtml = null;
 
   for (const file of files) {
     if (file.isDirectory()) {
@@ -114,12 +120,46 @@ export async function syncCustomLanding(sourcePath, projectDir, frameworkConfig,
     }
 
     const ext = extname(file.name).toLowerCase();
+    const name = basename(file.name, ext).toLowerCase();
+
     if (ext === '.html' || ext === '.htm') {
-      htmlFiles.push(file.name);
+      // Detect custom navbar/footer HTML files (skip if hidden)
+      if (!navbarHidden && (name === 'navbar' || name === 'nav' || name === 'header')) {
+        navbarHtml = file.name;
+      } else if (!footerHidden && name === 'footer') {
+        footerHtml = file.name;
+      } else if (!((name === 'navbar' || name === 'nav' || name === 'header') || name === 'footer')) {
+        htmlFiles.push(file.name);
+      }
     } else if (ext === '.css') {
       cssFiles.push(file.name);
     } else if (ext === '.js' || ext === '.mjs') {
       jsFiles.push(file.name);
+    }
+  }
+
+  // Read custom navbar/footer content if present
+  let navbarContent = navbarHidden ? '__hidden__' : null;
+  let footerContent = footerHidden ? '__hidden__' : null;
+
+  if (!navbarHidden && navbarHtml) {
+    navbarContent = await readFile(join(landingSource, navbarHtml), 'utf-8');
+  }
+  if (!footerHidden && footerHtml) {
+    footerContent = await readFile(join(landingSource, footerHtml), 'utf-8');
+  }
+
+  // Also check config for custom navbar/footer (skip if hidden)
+  if (!navbarHidden && !navbarContent && landingConfig.navbar?.html) {
+    const navPath = join(landingSource, '..', landingConfig.navbar.html);
+    if (await pathExists(navPath)) {
+      navbarContent = await readFile(navPath, 'utf-8');
+    }
+  }
+  if (!footerHidden && !footerContent && landingConfig.footer?.html) {
+    const footerPath = join(landingSource, '..', landingConfig.footer.html);
+    if (await pathExists(footerPath)) {
+      footerContent = await readFile(footerPath, 'utf-8');
     }
   }
 
@@ -133,6 +173,8 @@ export async function syncCustomLanding(sourcePath, projectDir, frameworkConfig,
       cssFiles,
       jsFiles,
       assetFiles,
+      navbarContent,
+      footerContent,
       config: landingConfig,
     }
   );
@@ -170,12 +212,55 @@ export async function syncSectionsLanding(sourcePath, projectDir, frameworkConfi
     }
   }
 
+  // Check if navbar/footer are explicitly hidden
+  const navbarHidden = landingConfig.navbar === false;
+  const footerHidden = landingConfig.footer === false;
+
+  // Check for custom navbar/footer in _landing/ folder
+  const landingSource = join(sourcePath, landingConfig.source || '_landing');
+  let navbarContent = navbarHidden ? '__hidden__' : null;
+  let footerContent = footerHidden ? '__hidden__' : null;
+
+  if (!navbarHidden) {
+    const navbarNames = ['navbar.html', 'nav.html', 'header.html'];
+    for (const name of navbarNames) {
+      const navPath = join(landingSource, name);
+      if (await pathExists(navPath)) {
+        navbarContent = await readFile(navPath, 'utf-8');
+        break;
+      }
+    }
+  }
+
+  if (!footerHidden) {
+    const footerPath = join(landingSource, 'footer.html');
+    if (await pathExists(footerPath)) {
+      footerContent = await readFile(footerPath, 'utf-8');
+    }
+  }
+
+  // Also check config for custom navbar/footer (skip if hidden)
+  if (!navbarHidden && !navbarContent && landingConfig.navbar?.html) {
+    const navPath = join(sourcePath, landingConfig.navbar.html);
+    if (await pathExists(navPath)) {
+      navbarContent = await readFile(navPath, 'utf-8');
+    }
+  }
+  if (!footerHidden && !footerContent && landingConfig.footer?.html) {
+    const fPath = join(sourcePath, landingConfig.footer.html);
+    if (await pathExists(fPath)) {
+      footerContent = await readFile(fPath, 'utf-8');
+    }
+  }
+
   // Generate sections landing for framework
   await generateSectionsLandingForFramework(
     projectDir,
     frameworkConfig,
     {
       sections: processedSections,
+      navbarContent,
+      footerContent,
       config: landingConfig,
     }
   );
@@ -213,7 +298,7 @@ async function generateLandingForFramework(projectDir, frameworkConfig, landingD
  * Generate Astro landing page (standalone, no template imports)
  */
 async function generateAstroLanding(projectDir, landingData) {
-  const { sourcePath, htmlFiles, cssFiles, jsFiles, config } = landingData;
+  const { sourcePath, htmlFiles, cssFiles, jsFiles, navbarContent, footerContent, config } = landingData;
 
   // Read main HTML file
   const mainHtml = htmlFiles.includes('index.html') ? 'index.html' : htmlFiles[0];
@@ -224,12 +309,16 @@ async function generateAstroLanding(projectDir, landingData) {
 
   let htmlContent = await readFile(join(sourcePath, mainHtml), 'utf-8');
 
-  // Read CSS files
+  // Read CSS files and write to a separate file
   let cssContent = '';
   for (const cssFile of cssFiles) {
     const css = await readFile(join(sourcePath, cssFile), 'utf-8');
     cssContent += `/* ${cssFile} */\n${css}\n\n`;
   }
+
+  // Write landing CSS to a separate file so Vite processes it through the full pipeline
+  const landingCssPath = join(projectDir, 'src', 'styles', 'landing.css');
+  await writeFile(landingCssPath, cssContent, 'utf-8');
 
   // Read JS files
   let jsContent = '';
@@ -238,13 +327,33 @@ async function generateAstroLanding(projectDir, landingData) {
     jsContent += `// ${jsFile}\n${js}\n\n`;
   }
 
+  // Determine header/footer: hidden ('__hidden__'), custom (string HTML), or default (null)
+  const navbarIsHidden = navbarContent === '__hidden__';
+  const footerIsHidden = footerContent === '__hidden__';
+  const hasCustomNavbar = !navbarIsHidden && !!navbarContent;
+  const hasCustomFooter = !footerIsHidden && !!footerContent;
+
+  const headerImport = navbarIsHidden || hasCustomNavbar ? '' : "import Header from '../components/Header.astro';";
+  const footerImport = footerIsHidden || hasCustomFooter ? '' : "import Footer from '../components/Footer.astro';";
+  const headerRender = navbarIsHidden
+    ? ''
+    : hasCustomNavbar
+      ? `<header class="landing-custom-navbar">\n      ${navbarContent}\n    </header>`
+      : '<Header />';
+  const footerRender = footerIsHidden
+    ? ''
+    : hasCustomFooter
+      ? `<footer class="landing-custom-footer">\n      ${footerContent}\n    </footer>`
+      : '<Footer />';
+
   // Generate standalone Astro component
   const astroContent = `---
 // Custom landing page - auto-generated by Lito CLI
 // Source: _landing/ folder
 import '../styles/global.css';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
+import '../styles/landing.css';
+${headerImport}
+${footerImport}
 import { getConfigFile } from '../utils/config';
 
 const config = await getConfigFile();
@@ -269,18 +378,15 @@ const config = await getConfigFile();
         document.documentElement.classList.add('light');
       }
     </script>
-    <style>
-      ${cssContent}
-    </style>
   </head>
   <body class="bg-background text-foreground font-sans antialiased">
-    <Header />
+    ${headerRender}
 
     <main class="landing-custom">
       ${htmlContent}
     </main>
 
-    <Footer />
+    ${footerRender}
 
     ${jsContent ? `<script>\n${jsContent}\n</script>` : ''}
   </body>
@@ -571,7 +677,7 @@ async function generateSectionsLandingForFramework(projectDir, frameworkConfig, 
  * Generate Astro sections landing page
  */
 async function generateAstroSectionsLanding(projectDir, landingData) {
-  const { sections, config } = landingData;
+  const { sections, navbarContent, footerContent, config } = landingData;
 
   // Generate section renders
   const sectionRenders = sections.map((section, index) => {
@@ -591,11 +697,30 @@ async function generateAstroSectionsLanding(projectDir, landingData) {
     }
   }).join('\n');
 
+  // Determine header/footer: hidden ('__hidden__'), custom (string HTML), or default (null)
+  const navbarIsHidden = navbarContent === '__hidden__';
+  const footerIsHidden = footerContent === '__hidden__';
+  const hasCustomNavbar = !navbarIsHidden && !!navbarContent;
+  const hasCustomFooter = !footerIsHidden && !!footerContent;
+
+  const headerImport = navbarIsHidden || hasCustomNavbar ? '' : "import Header from '../components/Header.astro';";
+  const footerImport = footerIsHidden || hasCustomFooter ? '' : "import Footer from '../components/Footer.astro';";
+  const headerRender = navbarIsHidden
+    ? ''
+    : hasCustomNavbar
+      ? `<header class="landing-custom-navbar">\n      ${navbarContent}\n    </header>`
+      : '<Header />';
+  const footerRender = footerIsHidden
+    ? ''
+    : hasCustomFooter
+      ? `<footer class="landing-custom-footer">\n      ${footerContent}\n    </footer>`
+      : '<Footer />';
+
   const astroContent = `---
 // Sections-based landing page - auto-generated by Lito CLI
 import '../styles/global.css';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
+${headerImport}
+${footerImport}
 import { getConfigFile } from '../utils/config';
 
 const config = await getConfigFile();
@@ -621,13 +746,13 @@ const config = await getConfigFile();
     </script>
   </head>
   <body class="bg-background text-foreground font-sans antialiased">
-    <Header />
+    ${headerRender}
 
     <main class="landing-sections">
       ${sectionRenders}
     </main>
 
-    <Footer />
+    ${footerRender}
   </body>
 </html>
 `;

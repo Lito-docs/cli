@@ -13,7 +13,7 @@ const KNOWN_LOCALES = [
 ];
 
 // Special folders that are not content
-const SPECIAL_FOLDERS = ['_assets', '_css', '_images', '_static', '_landing', 'public'];
+const SPECIAL_FOLDERS = ['_assets', '_css', '_images', '_static', '_landing', '_navbar', '_footer', 'public'];
 
 /**
  * Get i18n configuration from docs-config.json

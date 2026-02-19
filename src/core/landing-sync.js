@@ -477,6 +477,36 @@ ${footerImport}
 import { getConfigFile } from '../utils/config';
 
 const config = await getConfigFile();
+
+// Font configuration
+const fonts = config.branding?.fonts;
+const headingFont = fonts?.heading || 'Syne';
+const bodyFont = fonts?.body || 'Inter';
+const codeFont = fonts?.code || 'Fira Code';
+
+const fontFamilies = [];
+if (bodyFont === 'Inter') {
+  fontFamilies.push('Inter:opsz,wght@14..32,400..700');
+} else {
+  fontFamilies.push(bodyFont.replace(/ /g, '+') + ':wght@400;500;600;700');
+}
+if (headingFont !== bodyFont) {
+  fontFamilies.push(headingFont.replace(/ /g, '+') + ':wght@600;700;800');
+}
+fontFamilies.push(codeFont.replace(/ /g, '+') + ':wght@400;500;600');
+const googleFontsUrl = 'https://fonts.googleapis.com/css2?' + fontFamilies.map(f => 'family=' + f).join('&') + '&display=swap';
+
+const fontOverrides = [];
+if (bodyFont !== 'Inter') {
+  fontOverrides.push("--font-sans: '" + bodyFont + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;");
+}
+if (headingFont !== 'Syne') {
+  fontOverrides.push("--font-heading: '" + headingFont + "', '" + bodyFont + "', system-ui, sans-serif !important;");
+}
+if (codeFont !== 'Fira Code') {
+  fontOverrides.push("--font-mono: '" + codeFont + "', 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace !important;");
+}
+const fontOverrideStyle = fontOverrides.length > 0 ? ':root { ' + fontOverrides.join(' ') + ' }' : '';
 ---
 
 <!doctype html>
@@ -489,7 +519,8 @@ const config = await getConfigFile();
     <link rel="icon" href={config.branding?.favicon || '/favicon.svg'} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href={googleFontsUrl} rel="stylesheet" />
+    {fontOverrideStyle && <style set:html={fontOverrideStyle} />}
     <script is:inline>
       const savedTheme = localStorage.getItem('theme');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -837,6 +868,36 @@ ${footerImport}
 import { getConfigFile } from '../utils/config';
 
 const config = await getConfigFile();
+
+// Font configuration
+const fonts = config.branding?.fonts;
+const headingFont = fonts?.heading || 'Syne';
+const bodyFont = fonts?.body || 'Inter';
+const codeFont = fonts?.code || 'Fira Code';
+
+const fontFamilies = [];
+if (bodyFont === 'Inter') {
+  fontFamilies.push('Inter:opsz,wght@14..32,400..700');
+} else {
+  fontFamilies.push(bodyFont.replace(/ /g, '+') + ':wght@400;500;600;700');
+}
+if (headingFont !== bodyFont) {
+  fontFamilies.push(headingFont.replace(/ /g, '+') + ':wght@600;700;800');
+}
+fontFamilies.push(codeFont.replace(/ /g, '+') + ':wght@400;500;600');
+const googleFontsUrl = 'https://fonts.googleapis.com/css2?' + fontFamilies.map(f => 'family=' + f).join('&') + '&display=swap';
+
+const fontOverrides = [];
+if (bodyFont !== 'Inter') {
+  fontOverrides.push("--font-sans: '" + bodyFont + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;");
+}
+if (headingFont !== 'Syne') {
+  fontOverrides.push("--font-heading: '" + headingFont + "', '" + bodyFont + "', system-ui, sans-serif !important;");
+}
+if (codeFont !== 'Fira Code') {
+  fontOverrides.push("--font-mono: '" + codeFont + "', 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace !important;");
+}
+const fontOverrideStyle = fontOverrides.length > 0 ? ':root { ' + fontOverrides.join(' ') + ' }' : '';
 ---
 
 <!doctype html>
@@ -848,7 +909,8 @@ const config = await getConfigFile();
     <link rel="icon" href={config.branding?.favicon || '/favicon.svg'} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet" />
+    <link href={googleFontsUrl} rel="stylesheet" />
+    {fontOverrideStyle && <style set:html={fontOverrideStyle} />}
     <script is:inline>
       const savedTheme = localStorage.getItem('theme');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

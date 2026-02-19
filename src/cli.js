@@ -5,6 +5,7 @@ import { devCommand } from "./commands/dev.js";
 import { ejectCommand } from "./commands/eject.js";
 import { initCommand } from "./commands/init.js";
 import { validateCommand } from "./commands/validate.js";
+import { checkLinksCommand } from "./commands/check-links.js";
 import { previewCommand } from "./commands/preview.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { infoCommand } from "./commands/info.js";
@@ -116,7 +117,20 @@ export async function cli() {
     .description("Validate docs-config.json configuration")
     .option("-i, --input <path>", "Path to the docs folder")
     .option("-q, --quiet", "Quiet mode for CI (exit code only)")
+    .option("--content", "Run content quality checks")
+    .option("--links", "Run broken link detection")
+    .option("--all", "Run all checks (config + content + links)")
+    .option("--strict", "Fail on warnings too (for CI)")
     .action(validateCommand);
+
+  // Check links
+  program
+    .command("check-links")
+    .description("Scan documentation for broken internal links")
+    .requiredOption("-i, --input <path>", "Path to the docs folder")
+    .option("--strict", "Exit with code 1 on broken links (CI)")
+    .option("-q, --quiet", "Quiet mode for CI (exit code only)")
+    .action(checkLinksCommand);
 
   // Preview production build
   program

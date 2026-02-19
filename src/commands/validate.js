@@ -3,6 +3,8 @@ import { resolve, join } from 'path';
 import { intro, outro, log, spinner } from '@clack/prompts';
 import pc from 'picocolors';
 import { validateConfig, isPortableConfig, getCoreConfigKeys, getExtensionKeys } from '../core/config-validator.js';
+import { lintContent } from '../core/content-linter.js';
+import { checkLinks } from '../core/link-checker.js';
 
 /**
  * Validate command - Validate docs-config.json
@@ -12,18 +14,41 @@ export async function validateCommand(options) {
     const inputPath = options.input ? resolve(options.input) : process.cwd();
     const configPath = join(inputPath, 'docs-config.json');
 
+    const runContent = options.content || options.all;
+    const runLinks = options.links || options.all;
+    const strict = options.strict || false;
+
     // Quick mode for CI - just exit with code
     if (options.quiet) {
+      let hasErrors = false;
+
+      // Config validation
       if (!existsSync(configPath)) {
         process.exit(1);
       }
       try {
         const config = JSON.parse(readFileSync(configPath, 'utf-8'));
         const result = validateConfig(config, inputPath, { silent: true });
-        process.exit(result.valid ? 0 : 1);
+        if (!result.valid) hasErrors = true;
+
+        // Content linting
+        if (runContent) {
+          const lint = await lintContent(inputPath, { config });
+          const hasLintErrors = lint.issues.some(i => i.severity === 'error');
+          const hasLintWarnings = lint.issues.some(i => i.severity === 'warning');
+          if (hasLintErrors || (strict && hasLintWarnings)) hasErrors = true;
+        }
+
+        // Link checking
+        if (runLinks) {
+          const linkResult = await checkLinks(inputPath);
+          if (linkResult.brokenLinks.length > 0) hasErrors = true;
+        }
       } catch (e) {
-        process.exit(1);
+        hasErrors = true;
       }
+
+      process.exit(hasErrors ? 1 : 0);
     }
 
     console.clear();
@@ -31,7 +56,7 @@ export async function validateCommand(options) {
 
     const s = spinner();
 
-    // Check if config file exists
+    // ── Config validation ──
     s.start('Looking for docs-config.json...');
 
     if (!existsSync(configPath)) {
@@ -113,7 +138,89 @@ export async function validateCommand(options) {
     }
 
     log.message('');
-    outro(pc.green('Validation complete!'));
+
+    // Track if any checks failed
+    let hasFailure = false;
+
+    // ── Content linting ──
+    if (runContent) {
+      log.message(pc.dim('─'.repeat(50)));
+      log.message('');
+      s.start('Linting documentation content...');
+
+      const lint = await lintContent(inputPath, { config });
+
+      const errors = lint.issues.filter(i => i.severity === 'error');
+      const warnings = lint.issues.filter(i => i.severity === 'warning');
+
+      if (lint.issues.length === 0) {
+        s.stop(pc.green(`Content is clean (${lint.totalFiles} files checked)`));
+      } else {
+        s.stop(pc.yellow(`Found ${lint.issues.length} issue(s) in ${lint.totalFiles} files`));
+        log.message('');
+
+        if (errors.length > 0) {
+          log.error(pc.bold(`Errors (${errors.length}):`));
+          for (const issue of errors) {
+            log.error(`  ${pc.red('✗')} ${pc.cyan(issue.file)}: ${issue.message} ${pc.dim(`[${issue.rule}]`)}`);
+          }
+          log.message('');
+          hasFailure = true;
+        }
+
+        if (warnings.length > 0) {
+          log.warn(pc.bold(`Warnings (${warnings.length}):`));
+          for (const issue of warnings) {
+            log.warn(`  ${pc.yellow('!')} ${pc.cyan(issue.file)}: ${issue.message} ${pc.dim(`[${issue.rule}]`)}`);
+          }
+          log.message('');
+          if (strict) hasFailure = true;
+        }
+      }
+    }
+
+    // ── Link checking ──
+    if (runLinks) {
+      log.message(pc.dim('─'.repeat(50)));
+      log.message('');
+      s.start('Checking for broken links...');
+
+      const linkResult = await checkLinks(inputPath);
+
+      if (linkResult.brokenLinks.length === 0) {
+        s.stop(pc.green(`All ${linkResult.totalLinks} links are valid (${linkResult.checkedFiles} files)`));
+      } else {
+        s.stop(pc.yellow(`Found ${linkResult.brokenLinks.length} broken link(s)`));
+        log.message('');
+
+        // Group by file
+        const byFile = new Map();
+        for (const bl of linkResult.brokenLinks) {
+          if (!byFile.has(bl.file)) byFile.set(bl.file, []);
+          byFile.get(bl.file).push(bl);
+        }
+
+        for (const [file, links] of byFile) {
+          log.message(`  ${pc.bold(pc.cyan(file))}`);
+          for (const bl of links) {
+            const label = bl.text ? ` (${pc.dim(bl.text)})` : '';
+            log.message(`    ${pc.red('✗')} ${bl.link}${label}`);
+            if (bl.suggestion) {
+              log.message(`      ${pc.dim('Did you mean:')} ${pc.green(bl.suggestion)}`);
+            }
+          }
+        }
+        log.message('');
+        hasFailure = true;
+      }
+    }
+
+    if (hasFailure) {
+      outro(pc.red('Validation complete with errors'));
+      process.exit(1);
+    } else {
+      outro(pc.green('Validation complete!'));
+    }
   } catch (error) {
     log.error(pc.red(error.message));
     if (error.stack && !options.quiet) {

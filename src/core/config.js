@@ -102,6 +102,94 @@ export async function generateConfig(projectDir, options, frameworkConfig = null
     }
   }
 
+  // Inject llms.txt integration into astro.config.mjs
+  if (frameworkName === 'astro' && config.integrations?.llmsTxt?.enabled && config.metadata?.url) {
+    const astroConfigPath = join(projectDir, "astro.config.mjs");
+    if (await pathExists(astroConfigPath)) {
+      let content = await readFile(astroConfigPath, "utf-8");
+
+      // Add import after the last existing import line
+      const importLine = `import astroLlmsTxt from '@4hse/astro-llms-txt';`;
+      if (!content.includes(importLine)) {
+        const lines = content.split('\n');
+        let lastImportIdx = 0;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('import ')) lastImportIdx = i;
+        }
+        lines.splice(lastImportIdx + 1, 0, importLine);
+        content = lines.join('\n');
+      }
+
+      // Build the integration call
+      const llmsTitle = config.integrations.llmsTxt.title || config.metadata.name || 'Documentation';
+      const llmsDesc = config.integrations.llmsTxt.description || config.metadata.description || '';
+      const llmsConfig = `    astroLlmsTxt({
+      title: ${JSON.stringify(llmsTitle)},
+      description: ${JSON.stringify(llmsDesc)},
+      docSet: [
+        {
+          title: ${JSON.stringify(llmsTitle + ' - Full Documentation')},
+          description: ${JSON.stringify('Complete documentation content')},
+          url: '/llms-full.txt',
+          include: ['**'],
+          mainSelector: 'article',
+          ignoreSelectors: ['nav', '.sidebar', '.toc', 'footer', '.breadcrumbs'],
+        },
+        {
+          title: ${JSON.stringify(llmsTitle + ' - Structure')},
+          description: ${JSON.stringify('Documentation structure overview')},
+          url: '/llms-small.txt',
+          include: ['**'],
+          onlyStructure: true,
+          mainSelector: 'article',
+          ignoreSelectors: ['nav', '.sidebar', '.toc', 'footer', '.breadcrumbs'],
+        },
+      ],
+    }),`;
+
+      // Insert after sitemap() in integrations array
+      if (content.includes('sitemap(),')) {
+        content = content.replace(
+          'sitemap(),',
+          `sitemap(),\n${llmsConfig}`
+        );
+      } else {
+        // Fallback: insert at start of integrations array
+        content = content.replace(
+          'integrations: [',
+          `integrations: [\n${llmsConfig}`
+        );
+      }
+
+      await writeFile(astroConfigPath, content, "utf-8");
+    }
+  }
+
+  // Inject redirects into astro.config.mjs
+  if (frameworkName === 'astro' && config.redirects && Object.keys(config.redirects).length > 0) {
+    const astroConfigPath = join(projectDir, "astro.config.mjs");
+    if (await pathExists(astroConfigPath)) {
+      let content = await readFile(astroConfigPath, "utf-8");
+
+      // Build redirects object for Astro config
+      const redirectEntries = Object.entries(config.redirects).map(([source, dest]) => {
+        if (typeof dest === 'string') {
+          return `    '${source}': '${dest}'`;
+        }
+        return `    '${source}': { status: ${dest.status || 301}, destination: '${dest.destination}' }`;
+      });
+
+      const redirectsBlock = `  redirects: {\n${redirectEntries.join(',\n')}\n  },`;
+
+      content = content.replace(
+        "export default defineConfig({",
+        `export default defineConfig({\n${redirectsBlock}`
+      );
+
+      await writeFile(astroConfigPath, content, "utf-8");
+    }
+  }
+
   // Update vite.config.js for React/Vue frameworks
   if (['react', 'vue'].includes(frameworkName) && baseUrl && baseUrl !== "/") {
     const viteConfigPath = join(projectDir, "vite.config.js");

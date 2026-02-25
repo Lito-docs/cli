@@ -49,6 +49,19 @@
             "href": {
               "type": "string",
               "description": "Link when clicking the logo"
+            },
+            "height": {
+              "type": "number",
+              "description": "Logo height in pixels"
+            },
+            "alt": {
+              "type": "string",
+              "description": "Alt text for the logo image (defaults to metadata.name)"
+            },
+            "replacesTitle": {
+              "type": "boolean",
+              "default": true,
+              "description": "When true, logo replaces site title text. When false, both are shown."
             }
           }
         },

@@ -480,7 +480,7 @@ const config = await getConfigFile();
 
 // Font configuration
 const fonts = config.branding?.fonts;
-const headingFont = fonts?.heading || 'Syne';
+const headingFont = fonts?.heading || 'Inter';
 const bodyFont = fonts?.body || 'Inter';
 const codeFont = fonts?.code || 'Fira Code';
 
@@ -500,7 +500,7 @@ const fontOverrides = [];
 if (bodyFont !== 'Inter') {
   fontOverrides.push("--font-sans: '" + bodyFont + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;");
 }
-if (headingFont !== 'Syne') {
+if (headingFont !== 'Inter') {
   fontOverrides.push("--font-heading: '" + headingFont + "', '" + bodyFont + "', system-ui, sans-serif !important;");
 }
 if (codeFont !== 'Fira Code') {
@@ -871,7 +871,7 @@ const config = await getConfigFile();
 
 // Font configuration
 const fonts = config.branding?.fonts;
-const headingFont = fonts?.heading || 'Syne';
+const headingFont = fonts?.heading || 'Inter';
 const bodyFont = fonts?.body || 'Inter';
 const codeFont = fonts?.code || 'Fira Code';
 
@@ -891,7 +891,7 @@ const fontOverrides = [];
 if (bodyFont !== 'Inter') {
   fontOverrides.push("--font-sans: '" + bodyFont + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;");
 }
-if (headingFont !== 'Syne') {
+if (headingFont !== 'Inter') {
   fontOverrides.push("--font-heading: '" + headingFont + "', '" + bodyFont + "', system-ui, sans-serif !important;");
 }
 if (codeFont !== 'Fira Code') {

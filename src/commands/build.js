@@ -31,7 +31,7 @@ export async function buildCommand(options) {
 
     // Step 1: Scaffold temporary project
     s.start('Setting up project...');
-    const projectDir = await scaffoldProject(templatePath);
+    const projectDir = await scaffoldProject(templatePath, inputPath);
     s.stop('Project scaffolded');
 
     // Step 1.5: Detect framework
@@ -88,7 +88,7 @@ export async function buildCommand(options) {
 
     // Cleanup temp directory
     s.start('Cleaning up...');
-    await cleanupProject();
+    await cleanupProject(projectDir);
     s.stop('Cleanup complete');
 
     outro(pc.green('Build completed successfully!'));
@@ -100,7 +100,7 @@ export async function buildCommand(options) {
 
     // Attempt to cleanup even on error
     try {
-      await cleanupProject();
+      await cleanupProject(projectDir);
     } catch (e) {
       // failed to cleanup
     }

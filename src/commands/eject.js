@@ -37,7 +37,7 @@ export async function ejectCommand(options) {
 
     // Step 1: Scaffold temporary Astro project
     s.start('Scaffolding Astro project...');
-    const projectDir = await scaffoldProject(templatePath);
+    const projectDir = await scaffoldProject(templatePath, inputPath);
     s.stop('Astro project scaffolded');
 
     // Step 2: Sync docs to Astro
@@ -63,7 +63,7 @@ export async function ejectCommand(options) {
 
     // Clean up temp directory
     s.start('Cleaning up...');
-    await cleanupProject();
+    await cleanupProject(projectDir);
     s.stop('Cleanup complete');
 
     // Step 6: Final instructions

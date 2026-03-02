@@ -108,15 +108,43 @@ export async function generateConfig(projectDir, options, frameworkConfig = null
     if (await pathExists(astroConfigPath)) {
       let content = await readFile(astroConfigPath, "utf-8");
 
-      // Add import after the last existing import line
-      const importLine = `import astroLlmsTxt from '@4hse/astro-llms-txt';`;
-      if (!content.includes(importLine)) {
+      // Add imports after the last existing import line
+      const importLines = [
+        `import _astroLlmsTxt from '@4hse/astro-llms-txt';`,
+        `import { fileURLToPath as _llmsFileURLToPath } from 'url';`,
+      ];
+      // Wrapper: fix Windows dir.pathname (/C:/... → C:/...) before passing to plugin
+      const wrapperFn = `function astroLlmsTxt(opts) {
+  const inner = _astroLlmsTxt(opts);
+  const origHook = inner.hooks['astro:build:done'];
+  inner.hooks['astro:build:done'] = async (args) => {
+    if (args.dir && args.dir.pathname) {
+      const fixed = _llmsFileURLToPath(args.dir);
+      args = { ...args, dir: { ...args.dir, pathname: fixed } };
+    }
+    return origHook(args);
+  };
+  return inner;
+}`;
+      for (const importLine of importLines) {
+        if (!content.includes(importLine)) {
+          const lines = content.split('\n');
+          let lastImportIdx = 0;
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('import ')) lastImportIdx = i;
+          }
+          lines.splice(lastImportIdx + 1, 0, importLine);
+          content = lines.join('\n');
+        }
+      }
+      // Inject wrapper function after imports
+      if (!content.includes('function astroLlmsTxt(')) {
         const lines = content.split('\n');
         let lastImportIdx = 0;
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].startsWith('import ')) lastImportIdx = i;
         }
-        lines.splice(lastImportIdx + 1, 0, importLine);
+        lines.splice(lastImportIdx + 1, 0, '', wrapperFn);
         content = lines.join('\n');
       }
 

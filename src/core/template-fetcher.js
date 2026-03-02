@@ -123,11 +123,15 @@ export async function fetchGitHubTemplate(owner, repo, ref) {
 
   // Use tar to extract (available on all Unix systems and modern Windows)
   const { execa } = await import('execa');
-  await execa('tar', [
-    '-xzf', tempTarPath,
-    '-C', cachePath,
-    '--strip-components=1'
-  ]);
+  const isWin = process.platform === 'win32';
+  const tarArgs = [
+    '-xzf', isWin ? tempTarPath.replace(/\\/g, '/') : tempTarPath,
+    '-C', isWin ? cachePath.replace(/\\/g, '/') : cachePath,
+    '--strip-components=1',
+    // On Windows, GNU tar misinterprets drive letters (C:) as remote hosts
+    ...(isWin ? ['--force-local'] : [])
+  ];
+  await execa('tar', tarArgs);
 
   // Cleanup temp tarball
   await remove(tempTarPath);

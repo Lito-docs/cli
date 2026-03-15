@@ -123,13 +123,13 @@ export async function fetchGitHubTemplate(owner, repo, ref) {
 
   // Use tar to extract (available on all Unix systems and modern Windows)
   const { execa } = await import('execa');
-  const isWin = process.platform === 'win32';
+  // Use forward slashes on Windows to avoid bsdtar issues with drive letters (C:)
+  const tarPath = tempTarPath.replace(/\\/g, '/');
+  const extractPath = cachePath.replace(/\\/g, '/');
   const tarArgs = [
-    '-xzf', isWin ? tempTarPath.replace(/\\/g, '/') : tempTarPath,
-    '-C', isWin ? cachePath.replace(/\\/g, '/') : cachePath,
-    '--strip-components=1',
-    // On Windows, GNU tar misinterprets drive letters (C:) as remote hosts
-    ...(isWin ? ['--force-local'] : [])
+    '-xzf', tarPath,
+    '-C', extractPath,
+    '--strip-components=1'
   ];
   await execa('tar', tarArgs);
 

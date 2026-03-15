@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { resolve, join, extname } from 'path';
+import { homedir } from 'os';
 import { intro, outro, log } from '@clack/prompts';
 import pc from 'picocolors';
 import { TEMPLATE_REGISTRY } from '../core/template-registry.js';
@@ -137,7 +138,7 @@ export async function infoCommand(options) {
     log.message(`  ${pc.cyan('Node.js:')} ${process.version}`);
     log.message(`  ${pc.cyan('Platform:')} ${process.platform}`);
 
-    const cacheDir = join(process.env.HOME || '~', '.lito', 'templates');
+    const cacheDir = join(homedir(), '.lito', 'templates');
     if (existsSync(cacheDir)) {
       const cached = readdirSync(cacheDir).length;
       log.message(`  ${pc.cyan('Cached templates:')} ${cached}`);

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { resolve, join, extname } from 'path';
+import { homedir } from 'os';
 import { intro, outro, log, spinner } from '@clack/prompts';
 import pc from 'picocolors';
 import { validateConfig } from '../core/config-validator.js';
@@ -257,7 +258,7 @@ async function checkCommonIssues(inputPath) {
 }
 
 async function checkTemplateCache() {
-  const cacheDir = join(process.env.HOME || '~', '.lito', 'templates');
+  const cacheDir = join(homedir(), '.lito', 'templates');
 
   if (!existsSync(cacheDir)) {
     return {

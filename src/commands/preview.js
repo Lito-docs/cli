@@ -71,7 +71,8 @@ export async function previewCommand(options) {
     } catch (serveError) {
       // Fallback to Python's http.server if serve isn't available
       try {
-        await execa('python3', ['-m', 'http.server', port, '-d', outputPath], {
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        await execa(pythonCmd, ['-m', 'http.server', port, '-d', outputPath], {
           stdio: 'inherit',
           cwd: process.cwd(),
         });

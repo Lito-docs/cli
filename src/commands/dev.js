@@ -9,6 +9,7 @@ import { generateConfig } from '../core/config.js';
 import { syncDocsConfig } from '../core/config-sync.js';
 import { getTemplatePath } from '../core/template-fetcher.js';
 import { detectFramework, runFrameworkDev } from '../core/framework-runner.js';
+import { execa } from 'execa';
 
 export async function devCommand(options) {
   try {
@@ -39,17 +40,123 @@ export async function devCommand(options) {
     const frameworkConfig = await detectFramework(projectDir);
     s.stop(`Using framework: ${pc.cyan(frameworkConfig.name)}`);
 
-    // Register cleanup handlers
-    const cleanup = async () => {
+    let watcher = null;
+    let serverProcess = null;
+    let syncTimeout = null;
+    let isSyncing = false;
+    let isCleaningUp = false;
+    let isCapturingInput = false;
+
+    const handleRawInput = (key) => {
+      if (key === '\u0003') {
+        handleSigInt();
+      }
+    };
+
+    const startInputCapture = () => {
+      if (process.platform !== 'win32' || !process.stdin.isTTY || isCapturingInput) {
+        return;
+      }
+
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', handleRawInput);
+      isCapturingInput = true;
+    };
+
+    const stopInputCapture = () => {
+      if (!isCapturingInput || !process.stdin.isTTY) {
+        return;
+      }
+
+      process.stdin.off('data', handleRawInput);
+      try {
+        process.stdin.setRawMode(false);
+      } catch {}
+      isCapturingInput = false;
+    };
+
+    // Windows: kill the child process tree
+    const killServer = async () => {
+      const proc = serverProcess;
+      serverProcess = null;
+      if (!proc || !proc.pid) return;
+
+      try {
+        if (process.platform === 'win32') {
+          await execa('taskkill', ['/pid', String(proc.pid), '/T', '/F'], {
+            stdio: 'ignore',
+            reject: false,
+            windowsHide: true,
+          });
+        } else {
+          proc.kill('SIGTERM');
+          setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 3000);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    // Windows: free the port if taskkill missed anything
+    const stopPortProcesses = async () => {
+      if (process.platform !== 'win32') return;
+      const port = Number(options.port);
+      if (!Number.isInteger(port) || port <= 0) return;
+
+      await execa('powershell', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        `$conns = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue; ` +
+        `if ($conns) { $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique; ` +
+        `foreach ($pid in $pids) { taskkill /PID $pid /T /F | Out-Null } }`
+      ], {
+        stdio: 'ignore',
+        reject: false,
+        windowsHide: true,
+      });
+    };
+
+    // Cleanup
+    const cleanup = async (exitCode = 0) => {
+      if (isCleaningUp) return;
+      isCleaningUp = true; // set eagerly before any await
+
+      process.off('SIGINT', handleSigInt);
+      process.off('SIGTERM', handleSigTerm);
+      process.off('SIGBREAK', handleSigBreak);
+
+      // Stop raw stdin listener on Windows
+      stopInputCapture();
+
       s.start('Cleaning up...');
+      if (syncTimeout) clearTimeout(syncTimeout);
+      if (watcher) await watcher.close();
+
+      await killServer();           // <-- uses killServer, not stopServer
+      await stopPortProcesses();
       await cleanupProject(projectDir);
       s.stop('Cleanup complete');
-      process.exit(0);
+      process.exit(exitCode);
     };
-    process.on('SIGINT', cleanup);
-    process.on('SIGTERM', cleanup);
 
-    // Step 2: Prepare project (Install dependencies, Sync docs, Generate navigation)
+    const handleSigInt = () => {
+      log.warn('Ctrl+C received. Stopping dev server...');
+      cleanup(0);
+    };
+    const handleSigTerm = () => cleanup(0);
+    const handleSigBreak = () => {
+      log.warn('Interrupt received. Stopping dev server...');
+      cleanup(0);
+    };
+
+    process.on('SIGINT', handleSigInt);
+    process.on('SIGTERM', handleSigTerm);
+    process.on('SIGBREAK', handleSigBreak);
+
+    // Prepare project
     const { installDependencies } = await import('../core/package-manager.js');
     s.start('Preparing project (installing dependencies, syncing files)...');
 
@@ -71,15 +178,9 @@ export async function devCommand(options) {
     // Step 4: Setup file watcher with debouncing
     log.info(pc.cyan('Watching for file changes...'));
 
-    let syncTimeout = null;
-    let isSyncing = false;
-
     const debouncedSync = async () => {
       if (isSyncing) return;
-
-      if (syncTimeout) {
-        clearTimeout(syncTimeout);
-      }
+      if (syncTimeout) clearTimeout(syncTimeout);
 
       syncTimeout = setTimeout(async () => {
         if (isSyncing) return;
@@ -99,7 +200,7 @@ export async function devCommand(options) {
       }, 300); // 300ms debounce
     };
 
-    const watcher = chokidar.watch(inputPath, {
+    watcher = chokidar.watch(inputPath, {
       ignored: /(^|[\/\\])\../,
       persistent: true,
       ignoreInitial: true, // Don't trigger for existing files
@@ -122,7 +223,19 @@ export async function devCommand(options) {
 
     // Step 5: Start framework dev server
     note(`Starting ${frameworkConfig.name} dev server at http://localhost:${options.port}`, 'Dev Server');
-    await runFrameworkDev(projectDir, frameworkConfig, options.port);
+    const { subprocess } = await runFrameworkDev(projectDir, frameworkConfig, options.port);
+    serverProcess = subprocess;
+
+    if (serverProcess.stdout) serverProcess.stdout.pipe(process.stdout);
+    if (serverProcess.stderr) serverProcess.stderr.pipe(process.stderr);
+    startInputCapture();
+
+    try {
+      await serverProcess;
+      await cleanup(0);
+    } catch {
+      await cleanup(1);
+    }
 
   } catch (error) {
     if (isCancel(error)) {

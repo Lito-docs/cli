@@ -1,4 +1,4 @@
-import { runBinary } from './package-manager.js';
+import { runBinary, spawnBinary } from './package-manager.js';
 import { join } from 'path';
 import pkg from 'fs-extra';
 const { pathExists, readJson } = pkg;
@@ -187,7 +187,9 @@ export async function runFrameworkDev(projectDir, frameworkConfig, port = '4321'
     devArgs.push('--port', port);
   }
 
-  await runBinary(projectDir, binary, devArgs);
+  return spawnBinary(projectDir, binary, devArgs, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 /**

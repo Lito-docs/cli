@@ -58,28 +58,26 @@ export async function installPackage(projectDir, packageName, { dev = false, sil
 }
 
 /**
- * Runs a binary using the package manager (e.g. 'astro').
+ * Spawns a locally installed project binary (e.g. 'astro').
+ * Avoid package-manager wrapper processes so Ctrl+C behaves predictably.
+ */
+export async function spawnBinary(projectDir, binary, args = [], execaOptions = {}) {
+    const subprocess = execa(binary, args, {
+        cwd: projectDir,
+        preferLocal: true,
+        ...execaOptions,
+        windowsHide: process.platform === 'win32',
+    });
+
+    return { subprocess };
+}
+
+/**
+ * Runs a binary to completion using the package manager.
  */
 export async function runBinary(projectDir, binary, args = []) {
-    const manager = await getPackageManager();
-
-    let cmd = manager;
-    let cmdArgs = [];
-
-    if (manager === 'npm') {
-        cmd = 'npx';
-        cmdArgs = [binary, ...args];
-    } else {
-        // bun astro, pnpm astro, yarn astro
-        // yarn might need 'yarn run' or just 'yarn' if bin is exposed? 'yarn astro' works.
-        cmdArgs = [binary, ...args];
-    }
-
-    await execa(cmd, cmdArgs, {
-        cwd: projectDir,
-        stdio: 'inherit',
-        preferLocal: true,
-    });
+    const { subprocess } = await spawnBinary(projectDir, binary, args);
+    await subprocess;
 }
 
 export async function getRunInstruction(script) {
